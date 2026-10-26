@@ -34,3 +34,13 @@ The same patient may have multiple stays.
 - Dataset: Diabetes 130-US Hospitals for Years 1999–2008.
 - Source: UCI Machine Learning Repository.
 - Local file: diabetic_data.csv.
+
+## Working dataset
+- The weight column was removed from the working copy because 96.86% of its values are missing.
+- The original dataset remains unchanged.
+- The target column was added to the working copy.
+
+
+## Planned data splitting
+- Training, validation, and test sets will be split by patient_nbr.
+- Each patient must appear in only one split to prevent information leakage across repeated hospital stays.
