@@ -5,3 +5,6 @@ seaborn
 scipy
 scikit-learn
 fairlearn
+pydantic>=2,<3
+openai
+python-dotenv

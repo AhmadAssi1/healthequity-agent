@@ -7,13 +7,13 @@ Build an AI agent to assess data quality, analyze dataset characteristics and mo
 
 ## Inputs
 
-- A de-identified CSV or Excel dataset containing:
+- A synthetic or de-identified CSV or XLSX dataset containing:
   - Ground-truth outcomes.
-  - Model-predicted labels.
+  - Model-predicted labels, if available. If absent, suitable input features are required for the session-based baseline training path.
   - Demographic attributes for group comparisons, such as gender or age group.
   - Optional predicted probabilities for the positive class.
 - User-provided column mappings and the definition of the positive class.
-- The initial version supports binary classification.
+- The initial version supports one binary classification task: 30-day hospital readmission risk.
     
 ## Outputs
 
@@ -32,13 +32,13 @@ Build an AI agent to assess data quality, analyze dataset characteristics and mo
 - Use an AI agent to select appropriate analyses and explain findings, with deterministic Python tools computing all reported numbers.
 - Generate an evidence-based PDF audit report with findings, limitations, and recommended next steps.
 - Validate the auditing workflow on 30-day hospital readmission predictions.
-- Train a baseline readmission model to provide demonstration predictions.
+- Train a baseline LightGBM readmission model to provide demonstration predictions. If uploaded data has no prediction column and is suitable for baseline training, train the baseline within the session and audit its predictions. Clearly label it as a demo model, not the user's model.
 - Structure the implementation to allow future extensions.
 
 ## Out of Scope — Version 1
 
 - Regression, multiclass classification, and other prediction tasks.
-- Training or running user-uploaded models within the auditing workflow.
+- Training or running user-uploaded model artifacts within the auditing workflow. The application-provided session-based baseline described above is permitted.
 - Automatically modifying models or applying bias mitigation.
 - Clinical recommendations or legal compliance determinations.
 - Claims of validated support for domains beyond the initial use case.

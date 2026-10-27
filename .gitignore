@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.py[cod]
+/docs/HealthEquity_Agent_Project_Brief_Ahmad_Assi.pdf
