@@ -56,25 +56,26 @@ def validate_dataset(df: pd.DataFrame, mapping: ColumnMapping):
         if not values.isin([0, 1]).all():
             raise ValueError(
                 f"Column '{column}' must contain only 0 or 1."
-            )   
+            )
+    if mapping.score is not None:
+        scores = df[mapping.score]
+
+        if scores.isna().any():
+            raise ValueError("Score column must not contain missing values.")
+
+        if (
+            not pd.api.types.is_numeric_dtype(scores)
+            or pd.api.types.is_bool_dtype(scores)
+        ):
+            raise ValueError("Score column must contain numeric probabilities.")
+
+        if not scores.between(0, 1).all():
+            raise ValueError("Score values must be between 0 and 1.")
+       
 
 
         
-        if mapping.score is not None:
-            scores = df[mapping.score]
-
-            if scores.isna().any():
-                raise ValueError("Score column must not contain missing values.")
-
-            if (
-                not pd.api.types.is_numeric_dtype(scores)
-                or pd.api.types.is_bool_dtype(scores)
-            ):
-                raise ValueError("Score column must contain numeric probabilities.")
-
-            if not scores.between(0, 1).all():
-                raise ValueError("Score values must be between 0 and 1.")    
-
+        
 
 def create_dataset_fingerprint(df: pd.DataFrame) -> DatasetFingerprint:
     column_names = json.dumps(
