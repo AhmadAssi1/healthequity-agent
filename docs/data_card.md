@@ -21,7 +21,7 @@ The same patient may have multiple stays.
 ## Missing values
 - The "?" marker is treated as a missing value during loading.
 - The literal string "None" is preserved as a category.
-- Missing-value handling for model training has not yet been applied.
+- Missing feature values are retained and handled directly by LightGBM.
 
 ## Length of stay
 - time_in_hospital is right-skewed.
@@ -41,6 +41,36 @@ The same patient may have multiple stays.
 - The target column was added to the working copy.
 
 
-## Planned data splitting
-- Training, validation, and test sets will be split by patient_nbr.
-- Each patient must appear in only one split to prevent information leakage across repeated hospital stays.
+## Modeling cohort and data splitting
+
+- Predictions are intended to be made at hospital discharge.
+- Stays with death-related discharge codes 11, 19, 20, and 21
+  were excluded before splitting.
+- This removed 1,652 stays, leaving 100,114 stays.
+- The original dataset remains unchanged.
+- GroupShuffleSplit with random_state=42 created patient-disjoint
+  Train, Validation, and Test partitions.
+
+| Split | Hospital stays | Unique patients | Positive outcome rate |
+|---|---:|---:|---:|
+| Train | 69,944 | 49,307 | 11.30% |
+| Validation | 15,172 | 10,566 | 11.52% |
+| Test | 14,998 | 10,566 | 11.35% |
+
+- No patient appears in more than one split.
+- Combined partitions cover the modeling cohort without duplicate
+  encounter IDs.
+- Files are saved under data/splits/.
+- Validation supports model and threshold selection.
+- Test remains reserved for final evaluation.
+
+## Baseline preprocessing
+
+- The baseline uses 44 features: 8 numeric and 36 categorical.
+- Identifiers, readmitted, target, examide, and citoglipton
+  are excluded from predictors.
+- Categorical levels are learned from Train only.
+- Unseen categories are converted to missing values.
+- LightGBM handles missing feature values directly.
+- The literal laboratory category "None" is preserved.
+- Model configuration records feature order and categorical levels.

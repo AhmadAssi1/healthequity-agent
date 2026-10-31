@@ -8,3 +8,5 @@ fairlearn
 pydantic>=2,<3
 openai
 python-dotenv
+lightgbm
+mlflow

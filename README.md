@@ -6,15 +6,30 @@ The initial version focuses on binary classification, using 30-day hospital read
 
 ## Current Status
 
+## Current Status
+
 The project is under development. Completed work includes:
 
-- Project scope and repository setup.
-- Automated linting and testing workflow.
-- Initial exploration of the UCI Diabetes dataset.
-- Binary target definition and a draft Data Card.
-- A small Fairlearn MetricFrame example.
+- Repository setup and automated linting and testing.
+- Dataset exploration, binary target creation, and a draft Data Card.
+- Data contract, column mapping, dataset validation, and fingerprinting.
+- OpenAI connection and function-calling demonstration.
+- Patient-level Train, Validation, and Test splits.
+- Training-based categorical preprocessing.
+- LightGBM baseline training and validation-based model and threshold selection.
+- MLflow logging of parameters, metrics, model, and preprocessing configuration.
+- Verification that the saved model and configuration reproduce predictions.
 
-The Streamlit application currently contains a placeholder interface. Model training, the auditing agent, reporting, and monitoring are planned features.
+The selected experimental baseline uses 15 leaves and a decision
+threshold of 0.145. Validation average precision is 0.22211,
+ROC-AUC is 0.67157, and F1 is 0.2822.
+
+Test remains reserved for final evaluation. Fairness auditing,
+probability calibration assessment, the auditing agent, PDF reporting,
+and monitoring remain pending.
+
+The Streamlit application currently contains a placeholder interface.
+
 
 ## Requirements
 
