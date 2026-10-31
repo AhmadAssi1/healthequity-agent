@@ -26,5 +26,5 @@ jobs:
       - name: Lint Python code
         run: python -m ruff check .
 
-      - name: Run tests
-        run: python -m pytest
+      - name: Run tests with coverage
+        run: python -m pytest --cov=app --cov-report=term-missing

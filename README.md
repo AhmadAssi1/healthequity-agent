@@ -6,8 +6,6 @@ The initial version focuses on binary classification, using 30-day hospital read
 
 ## Current Status
 
-## Current Status
-
 The project is under development. Completed work includes:
 
 - Repository setup and automated linting and testing.
@@ -19,16 +17,40 @@ The project is under development. Completed work includes:
 - LightGBM baseline training and validation-based model and threshold selection.
 - MLflow logging of parameters, metrics, model, and preprocessing configuration.
 - Verification that the saved model and configuration reproduce predictions.
+- Validation calibration assessment and fixed-model Test evaluation.
+- A validated demo audit CSV with provenance metadata under data/samples/.
+- Model Registry Version 1 and verification of its reloaded predictions.
 
 The selected experimental baseline uses 15 leaves and a decision
 threshold of 0.145. Validation average precision is 0.22211,
 ROC-AUC is 0.67157, and F1 is 0.2822.
 
-Test remains reserved for final evaluation. Fairness auditing,
-probability calibration assessment, the auditing agent, PDF reporting,
-and monitoring remain pending.
+Test average precision is 0.21742, ROC-AUC is 0.66039, and F1 is 0.2753.
+The model and threshold were fixed before Test evaluation. Fairness auditing,
+Test and subgroup calibration, the auditing agent, PDF reporting, and monitoring
+remain pending.
 
 The Streamlit application currently contains a placeholder interface.
+
+## Scope Guardrails
+
+Version 1 targets one binary task: 30-day hospital readmission. Planned delivery
+includes three fairness metrics (demographic parity, equalized odds, and PPV
+differences) with confidence intervals, significance tests, suppression and severity
+policies; a guarded function-calling agent; a 12-scenario evaluation harness; PDF
+reporting; MLflow tracking; Docker and CI/CD; a public deployment; monitoring;
+white-label report configuration; and a CLI batch mode. These are planned product
+requirements, not claims that all features are currently implemented.
+
+Outside Version 1: regression, multiclass and time-to-event tasks; image/text
+models; causal explanations; automatic bias mitigation or retraining users' models;
+real protected health information; EHR/FHIR integration; accounts, multi-tenant
+storage, billing, and a third-party API. Intersectional groups, subgroup
+calibration plots, and bilingual reporting are stretch work after required gates.
+Clinical recommendations and legal compliance determinations are excluded.
+
+See [Project Scope](docs/project-scope.md) and
+[Implementation Decisions](docs/implementation-decisions.md) for details.
 
 
 ## Requirements
@@ -95,7 +117,19 @@ The target is defined as:
 - `1`: Readmission within fewer than 30 days (`<30`).
 - `0`: No recorded readmission (`NO`) or readmission after more than 30 days (`>30`).
 
-Each row represents a hospital stay. A patient may have multiple stays, so future training and evaluation splits must separate patients to prevent data leakage.
+Each row represents a hospital stay. All stays for a patient are kept in one
+partition to prevent patient overlap between Train, Validation, and Test.
+
+Run notebooks/exploration.ipynb to generate the patient partitions, then
+notebooks/model_development.ipynb to train, compare, evaluate, and save the
+baseline. The latter exports data/samples/diabetes_audit_sample.csv and its
+metadata JSON. The sample contains outcomes, predictions, scores, race, gender,
+age bands, and payer codes; no patient or encounter identifiers are included.
+
+The selected model is registered locally as healthequity-readmission-baseline,
+Version 1. Model files and the MLflow database are excluded from Git and must be
+regenerated on a fresh clone. Apply the saved preprocessing configuration before
+using the model for prediction.
 
 ## Quality Checks
 
@@ -108,7 +142,7 @@ python -m ruff check .
 Run tests:
 
 ```powershell
-python -m pytest
+python -m pytest --cov=app --cov-report=term-missing
 ```
 
 Check dependency compatibility:
@@ -117,7 +151,15 @@ Check dependency compatibility:
 python -m pip check
 ```
 
-GitHub Actions runs linting and tests on pushes and pull requests.
+GitHub Actions runs linting and tests with a coverage summary on pushes and pull
+requests. Coverage excludes the two live-API demonstration scripts.
+
+With the project environment active, enable and run local commit checks:
+
+```powershell
+python -m pre_commit install
+python -m pre_commit run --all-files
+```
 
 ## Project Structure
 
@@ -132,6 +174,8 @@ GitHub Actions runs linting and tests on pushes and pull requests.
 
 - [Project Scope](docs/project-scope.md)
 - [Data Card](docs/data_card.md)
+- [Model Card](docs/model_card.md)
+- [Implementation Decisions](docs/implementation-decisions.md)
 
 ## Data Source
 

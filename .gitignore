@@ -8,3 +8,7 @@ __pycache__/
 /mlflow.db*
 /mlartifacts/
 /data/splits/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

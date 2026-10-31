@@ -1,0 +1,16 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: Ruff checks
+        entry: python -m ruff check
+        language: system
+        files: '\.(py|ipynb)$'
+
+      - id: pytest
+        name: Tests with coverage
+        entry: python -m pytest --cov=app --cov-report=term-missing
+        language: system
+        pass_filenames: false
+        always_run: true
+        

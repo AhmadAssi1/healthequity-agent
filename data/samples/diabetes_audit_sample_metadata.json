@@ -1,0 +1,15 @@
+{
+  "source_split": "test",
+  "row_count": 14998,
+  "model_run_id": "a68871a678b842828033d442632a63cc",
+  "decision_threshold": 0.14499999999999996,
+  "positive_class": "readmission within less than 30 days",
+  "group_columns": [
+    "race",
+    "gender",
+    "age",
+    "payer_code"
+  ],
+  "model_fixed_before_test_evaluation": true,
+  "sample_file": "diabetes_audit_sample.csv"
+}
