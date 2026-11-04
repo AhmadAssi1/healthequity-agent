@@ -2,7 +2,7 @@ streamlit
 pandas
 matplotlib
 seaborn
-scipy
+scipy>=1.15
 scikit-learn
 fairlearn
 pydantic>=2,<3
