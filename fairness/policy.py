@@ -1,6 +1,8 @@
 from math import isfinite
+from numbers import Integral
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -74,6 +76,13 @@ def check_group_eligibility(
     positive_outcomes: int,
     policy: SuppressionPolicy,
 ) -> dict:
+
+    for value in (count, positive_outcomes):
+        if (
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, Integral)
+        ):
+            raise TypeError("Group counts must be integers.")
     if count < 0 or not 0 <= positive_outcomes <= count:
         raise ValueError(
             "Counts must satisfy 0 <= positive_outcomes <= count."

@@ -9,7 +9,7 @@ The initial version focuses on binary classification, using 30-day hospital read
 The project is under development. Completed work includes:
 
 - Repository setup and automated linting and testing.
-- Dataset exploration, binary target creation, and a draft Data Card.
+- Dataset exploration, binary target creation, and a Data Card.
 - Data contract, column mapping, dataset validation, and fingerprinting.
 - OpenAI connection and function-calling demonstration.
 - Patient-level Train, Validation, and Test splits.
@@ -20,15 +20,28 @@ The project is under development. Completed work includes:
 - Validation calibration assessment and fixed-model Test evaluation.
 - A validated demo audit CSV with provenance metadata under data/samples/.
 - Model Registry Version 1 and verification of its reloaded predictions.
+- Deterministic per-group metrics, reference comparisons, and maximum pairwise
+  demographic parity, equalized odds, and PPV differences.
+- Significance-test selection and reproducible bootstrap 95% confidence intervals.
+- Configurable group suppression, recorded exclusion reasons, and severity bands.
+- Synthetic scenarios with configurable planted selection-rate, TPR, and PPV gaps.
+- Methodology documentation and automated tests for the fairness engine.
 
 The selected experimental baseline uses 15 leaves and a decision
 threshold of 0.145. Validation average precision is 0.22211,
 ROC-AUC is 0.67157, and F1 is 0.2822.
 
 Test average precision is 0.21742, ROC-AUC is 0.66039, and F1 is 0.2753.
-The model and threshold were fixed before Test evaluation. Fairness auditing,
-Test and subgroup calibration, the auditing agent, PDF reporting, and monitoring
-remain pending.
+The model and threshold were fixed before Test evaluation. The Week 1 and Week 2
+technical benchmark checks passed in the November 5, 2026 review: 180 tests,
+hand-calculation and Fairlearn reference checks, suppression checks, and seeded
+bootstrap reproducibility. Reloaded baseline and registered-model predictions
+matched the logged metrics and demo CSV.
+
+The fairness engine can be used from Python without an LLM. Its functions have
+also been checked together on the demo attributes. A reusable audit orchestration
+entry point, the guarded agent, PDF reporting, full UI, deployment, and monitoring
+remain pending. Test and subgroup calibration have not been assessed.
 
 The Streamlit application currently contains a placeholder interface.
 
@@ -131,6 +144,39 @@ Version 1. Model files and the MLflow database are excluded from Git and must be
 regenerated on a fresh clone. Apply the saved preprocessing configuration before
 using the model for prediction.
 
+## Deterministic Fairness Engine
+
+The `fairness/` package contains:
+
+- `metrics.py`: per-group count, base rate, selection rate, TPR, FPR, PPV,
+  optional AUROC, reference comparisons, and maximum pairwise gaps.
+- `stats.py`: pooled two-proportion z-tests, multi-group chi-square tests,
+  Fisher tests for sparse tables, and percentile bootstrap intervals
+  (1,000 resamples and seed 42 by default).
+- `policy.py`: eligibility checks, filtering with suppression reasons, and
+  severity classification using `config.yaml`.
+- `scenarios.py`: exact confusion-count fixtures and seeded scenarios with
+  planted selection-rate, TPR, or PPV gaps from 0 to 0.50 in steps of 0.01.
+
+Before computing gaps, tests, or bootstrap intervals, call
+`filter_reportable_groups` separately for each attribute on the original dataset.
+By default, a group needs at least 50 stays and 10 actual positive outcomes.
+Retain the eligibility table so excluded groups and their reasons remain visible.
+Missing values form a separate group, distinct from a literal category named
+`Missing`. If fewer than two groups remain, report the comparison as unavailable
+instead of calling the analysis functions on empty or single-group data.
+
+Undefined rates remain unavailable, not zero. The default severity policy labels
+an observed gap above 0.10 with a confidence-interval lower bound above zero as
+`substantial`; otherwise a gap above 0.05 is `watch`. Severity is a reporting
+convention, separate from statistical significance. The rate-test helpers do not
+produce a combined equalized-odds p-value. The bootstrap assumes independent
+stays; repeated stays from one patient are a documented limitation.
+
+See [Methodology](docs/methodology.md) for formulas, test-selection rules, and
+interpretation limits. The scenario generator is groundwork for the later
+12-scenario agent evaluation harness, which is not implemented yet.
+
 ## Quality Checks
 
 Run linting:
@@ -139,10 +185,10 @@ Run linting:
 python -m ruff check .
 ```
 
-Run tests:
+Run all tests and measure coverage for both application and fairness modules:
 
 ```powershell
-python -m pytest --cov=app --cov-report=term-missing
+python -m pytest --cov=app --cov=fairness --cov-report=term-missing
 ```
 
 Check dependency compatibility:
@@ -151,8 +197,14 @@ Check dependency compatibility:
 python -m pip check
 ```
 
-GitHub Actions runs linting and tests with a coverage summary on pushes and pull
-requests. Coverage excludes the two live-API demonstration scripts.
+The November 5, 2026 review and follow-up passed 180 tests and measured 98% combined line
+coverage for `app` and `fairness` (100% for the included `app` modules). Coverage
+excludes the two live-API demonstration scripts and does not measure notebook
+training or complete agent behavior.
+
+GitHub Actions, pre-commit, and `.coveragerc` are configured to cover both `app`
+and `fairness`. The updated coverage settings have been verified locally; a new
+GitHub CI run is required after these changes are committed and pushed.
 
 With the project environment active, enable and run local commit checks:
 
@@ -163,10 +215,12 @@ python -m pre_commit run --all-files
 
 ## Project Structure
 
-- `app/`: Streamlit application.
-- `data/`: Dataset files and identifier mappings.
-- `docs/`: Project scope and data documentation.
-- `notebooks/`: Exploratory analysis.
+- `app/`: Streamlit placeholder, data helpers, schemas, and validation.
+- `fairness/`: Deterministic metrics, statistics, policies, and scenario generation.
+- `config.yaml`: Group eligibility and severity thresholds.
+- `data/`: Source dataset, identifier mappings, and the demo audit sample.
+- `docs/`: Scope, data/model cards, implementation decisions, and methodology.
+- `notebooks/`: Exploration, baseline development, and fairness verification.
 - `test/`: Automated tests.
 - `.github/workflows/`: Continuous integration workflow.
 
@@ -175,6 +229,8 @@ python -m pre_commit run --all-files
 - [Project Scope](docs/project-scope.md)
 - [Data Card](docs/data_card.md)
 - [Model Card](docs/model_card.md)
+- [Data Contract](docs/data-contract.md)
+- [Methodology](docs/methodology.md)
 - [Implementation Decisions](docs/implementation-decisions.md)
 
 ## Data Source

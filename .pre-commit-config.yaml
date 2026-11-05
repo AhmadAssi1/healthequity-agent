@@ -9,7 +9,7 @@ repos:
 
       - id: pytest
         name: Tests with coverage
-        entry: python -m pytest --cov=app --cov-report=term-missing
+        entry: python -m pytest --cov=app --cov=fairness --cov-report=term-missing
         language: system
         pass_filenames: false
         always_run: true

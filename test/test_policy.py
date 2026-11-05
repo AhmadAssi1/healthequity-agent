@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
@@ -242,3 +243,35 @@ def test_filter_when_all_groups_are_suppressed():
     assert len(eligibility) == 2
     assert not eligibility["reportable"].any()
     assert eligibility["suppression_reason"].notna().all()
+
+
+@pytest.mark.parametrize(
+    ("count", "positives"),
+    [
+        (50.5, 10),
+        (50, 10.5),
+        (True, 10),
+        (50, False),
+        (np.bool_(True), 10),
+        (50, np.bool_(False)),
+        ("50", 10),
+        (50, "10"),
+    ],
+)
+def test_non_integer_counts_rejected(count, positives):
+    with pytest.raises(TypeError, match="must be integers"):
+        check_group_eligibility(
+            count,
+            positives,
+            SuppressionPolicy(),
+        )
+
+
+def test_numpy_integer_counts_accepted():
+    result = check_group_eligibility(
+        np.int64(50),
+        np.int64(10),
+        SuppressionPolicy(),
+    )
+
+    assert result["reportable"] is True
