@@ -1,0 +1,7 @@
+fairness:
+  min_group_size: 50
+  min_positive_outcomes: 10
+
+severity:
+  watch_gap: 0.05
+  substantial_gap: 0.10
