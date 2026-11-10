@@ -86,7 +86,9 @@ def compare_proportions(
             return ProportionTestResult("fisher_exact", None, float(p_value), minimum)
         method = MonteCarloMethod(n_resamples=n_resamples, rng=np.random.default_rng(seed))
         p_value = fisher_exact(table, method=method).pvalue
-        return ProportionTestResult("fisher_monte_carlo", None, float(p_value), minimum)
+        return ProportionTestResult(
+            "fisher_monte_carlo", None, float(np.asarray(p_value).item()), minimum,
+        )
     if len(table) == 2:
         statistic, p_value = _z_test(table)
         return ProportionTestResult("two_proportion_z", statistic, p_value, minimum)

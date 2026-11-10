@@ -120,3 +120,13 @@ def test_bootstrap_tracks_partially_undefined_resamples():
 def test_bootstrap_requires_two_groups(bootstrap_example):
     with pytest.raises(ValueError, match="two eligible groups"):
         bootstrap_fairness_intervals(bootstrap_example.iloc[:100], "group")
+
+def test_sparse_single_observation_groups_return_scalar_monte_carlo_p_value():
+    # SciPy can return a one-element ndarray for this fixed-margin table.
+    result = compare_proportions(
+        [0, 1, 1, 0, 0, 1], [1] * 6, n_resamples=99, seed=42,
+    )
+    assert result.method == "fisher_monte_carlo"
+    assert type(result.p_value) is float
+    assert 0 <= result.p_value <= 1
+    assert result.min_expected_count == 0.5

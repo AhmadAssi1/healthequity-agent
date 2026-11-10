@@ -26,6 +26,19 @@ The project is under development. Completed work includes:
 - Configurable group suppression, recorded exclusion reasons, and severity bands.
 - Synthetic scenarios with configurable planted selection-rate, TPR, and PPV gaps.
 - Methodology documentation and automated tests for the fairness engine.
+- Structured audit schemas, internal dataset profiles, and policy-filtered
+  profiles for the agent.
+- Deterministic analysis planning from eligible-group confusion counts.
+- A plan guard that rebuilds the approved plan from trusted counts and records
+  every addition, replacement, and removal from the proposed plan.
+- Strict input/output contracts and a provider-neutral registry for the nine
+  tools. Six computation adapters and a local claims validator work on a bound
+  dataset; drafting and PDF rendering retain injectable backend interfaces.
+- An OpenAI Responses provider and guarded agent with strict final JSON output,
+  execution budgets, recorded tool history, and deterministic severity correction.
+- Mandatory structured-evidence validation and English narrative screening,
+  with verdicts retained in successful and failed traces. Human review remains
+  required; see [Claims Validation](docs/claims-validation.md).
 
 The selected experimental baseline uses 15 leaves and a decision
 threshold of 0.145. Validation average precision is 0.22211,
@@ -39,9 +52,10 @@ bootstrap reproducibility. Reloaded baseline and registered-model predictions
 matched the logged metrics and demo CSV.
 
 The fairness engine can be used from Python without an LLM. Its functions have
-also been checked together on the demo attributes. A reusable audit orchestration
-entry point, the guarded agent, PDF reporting, full UI, deployment, and monitoring
-remain pending. Test and subgroup calibration have not been assessed.
+also been checked together on the demo attributes. The guarded agent has completed
+a live run on the 14,998-row demo dataset. A CLI entry point, PDF reporting, full
+UI, deployment, and monitoring remain pending. Test and subgroup calibration have
+not been assessed.
 
 The Streamlit application currently contains a placeholder interface.
 
@@ -215,7 +229,8 @@ python -m pre_commit run --all-files
 
 ## Project Structure
 
-- `app/`: Streamlit placeholder, data helpers, schemas, and validation.
+- `app/`: Streamlit placeholder, data helpers, schemas, validation, profiling,
+  analysis selection, and plan correction.
 - `fairness/`: Deterministic metrics, statistics, policies, and scenario generation.
 - `config.yaml`: Group eligibility and severity thresholds.
 - `data/`: Source dataset, identifier mappings, and the demo audit sample.
@@ -231,6 +246,9 @@ python -m pre_commit run --all-files
 - [Model Card](docs/model_card.md)
 - [Data Contract](docs/data-contract.md)
 - [Methodology](docs/methodology.md)
+- [Analysis Guardrails](docs/analysis-guardrails.md)
+- [Tool Interfaces](docs/tool-interfaces.md)
+- [Claims Validation](docs/claims-validation.md)
 - [Implementation Decisions](docs/implementation-decisions.md)
 
 ## Data Source
