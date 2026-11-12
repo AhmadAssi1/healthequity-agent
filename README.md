@@ -1,73 +1,85 @@
 # HealthEquity Agent
 
-An AI agent for analyzing machine learning model performance and fairness, generating evidence-based reports, and monitoring drift.
+An evidence-based fairness auditor for binary classification on synthetic or
+de-identified healthcare data. The working CLI combines a guarded OpenAI agent
+with deterministic Python tools and saves validated findings and execution traces.
 
-The initial version focuses on binary classification, using 30-day hospital readmission prediction as a demonstration use case.
+The demonstration use case is 30-day hospital readmission prediction on the UCI
+Diabetes 130-US Hospitals dataset. PDF reporting, the full web application, and
+drift monitoring are planned deliverables.
 
 ## Current Status
 
-The project is under development. Completed work includes:
+Updated November 12, 2026.
 
-- Repository setup and automated linting and testing.
-- Dataset exploration, binary target creation, and a Data Card.
-- Data contract, column mapping, dataset validation, and fingerprinting.
-- OpenAI connection and function-calling demonstration.
-- Patient-level Train, Validation, and Test splits.
-- Training-based categorical preprocessing.
-- LightGBM baseline training and validation-based model and threshold selection.
-- MLflow logging of parameters, metrics, model, and preprocessing configuration.
-- Verification that the saved model and configuration reproduce predictions.
-- Validation calibration assessment and fixed-model Test evaluation.
-- A validated demo audit CSV with provenance metadata under data/samples/.
-- Model Registry Version 1 and verification of its reloaded predictions.
-- Deterministic per-group metrics, reference comparisons, and maximum pairwise
-  demographic parity, equalized odds, and PPV differences.
-- Significance-test selection and reproducible bootstrap 95% confidence intervals.
-- Configurable group suppression, recorded exclusion reasons, and severity bands.
-- Synthetic scenarios with configurable planted selection-rate, TPR, and PPV gaps.
-- Methodology documentation and automated tests for the fairness engine.
-- Structured audit schemas, internal dataset profiles, and policy-filtered
-  profiles for the agent.
-- Deterministic analysis planning from eligible-group confusion counts.
-- A plan guard that rebuilds the approved plan from trusted counts and records
-  every addition, replacement, and removal from the proposed plan.
-- Strict input/output contracts and a provider-neutral registry for the nine
-  tools. Six computation adapters and a local claims validator work on a bound
-  dataset; drafting and PDF rendering retain injectable backend interfaces.
-- An OpenAI Responses provider and guarded agent with strict final JSON output,
-  execution budgets, recorded tool history, and deterministic severity correction.
-- Mandatory structured-evidence validation and English narrative screening,
-  with verdicts retained in successful and failed traces. Human review remains
-  required; see [Claims Validation](docs/claims-validation.md).
+| Component | Status |
+|---|---|
+| Data validation | Typed column mappings; binary labels; optional scores; structural fingerprint; readable input errors |
+| Demo model | LightGBM baseline, patient-level splits, MLflow artifacts and registered Version 1 |
+| Fairness engine | Per-group metrics, three headline gaps, rate tests, seeded bootstrap intervals, suppression and severity policies |
+| Guarded agent | OpenAI Responses adapter, corrected analysis plans, strict output schemas, execution budgets and trace records |
+| Claims validation | Structured quantities checked against evidence; controlled English screening; one claim rewrite before a hard stop |
+| Quantitative summary | Rendered from trusted tool evidence and policy; original model draft and grounding verdict retained in the trace |
+| CSV CLI | Custom mappings, automatic artifact saving, failure records, and offline review of saved runs |
+| Web interface | Streamlit placeholder |
+| Planned product work | Twelve-scenario evaluation harness, PDF reports, upload UI, Docker/deployment, audit monitoring and white-label configuration |
 
-The selected experimental baseline uses 15 leaves and a decision
-threshold of 0.145. Validation average precision is 0.22211,
-ROC-AUC is 0.67157, and F1 is 0.2822.
+The selected provider is **OpenAI**, using `gpt-4.1-mini` in the recorded live
+runs; the original brief names Gemini. The provider/model configuration remains
+separate from the audit engine. Python tools compute quantitative results, and
+only aggregate profiles and tool outputs reach the language model.
 
-Test average precision is 0.21742, ROC-AUC is 0.66039, and F1 is 0.2753.
-The model and threshold were fixed before Test evaluation. The Week 1 and Week 2
-technical benchmark checks passed in the November 5, 2026 review: 180 tests,
-hand-calculation and Fairlearn reference checks, suppression checks, and seeded
-bootstrap reproducibility. Reloaded baseline and registered-model predictions
-matched the logged metrics and demo CSV.
+The registry declares nine tool interfaces. The agent selects the six computation
+tools; structured drafting and mandatory claim validation are controlled by
+Python. Standalone drafting and PDF rendering retain injectable backend interfaces.
 
-The fairness engine can be used from Python without an LLM. Its functions have
-also been checked together on the demo attributes. The guarded agent has completed
-a live run on the 14,998-row demo dataset. A CLI entry point, PDF reporting, full
-UI, deployment, and monitoring remain pending. Test and subgroup calibration have
-not been assessed.
+### Latest verification
 
-The Streamlit application currently contains a placeholder interface.
+| Evidence | Confirmed result |
+|---|---|
+| Full local test suite | **1,083 tests passed** |
+| Linting | Ruff passed |
+| Consecutive live demo batch | **5/5 completed**, each auditing 14,998 rows across race, gender, age and payer_code |
+| Batch total latency | **44.354-66.574 seconds**, mean **51.363 seconds** |
+| Model activity | Eight model turns and six computation-tool calls per run; first claims verdict passed in all five |
+| Follow-up summary grounding | All five saved candidates passed local grounding/revalidation with no additional provider calls |
+
+The live batch preceded the final deterministic summary-grounding stage. Its
+offline preview is separate evidence, not five new live runs. Earlier failed
+batches are retained in the [verification record](docs/week3-agent-verification.md).
+These measurements cover one dataset/model configuration; they do not establish
+general reliability or replace the planned twelve-scenario evaluation.
+
+The rule-based validator does not certify unrestricted prose. The generated
+quantitative summary keeps policy labels consistent with the evidence; free-text
+limitations and further interpretations still require human review. Results are
+statistical associations, not clinical recommendations or legal determinations.
+See [Claims Validation](docs/claims-validation.md) and
+[Agent Protocol](docs/agent-protocol.md).
+
+### Demonstration baseline
+
+LightGBM with 15 leaves, operating threshold **0.145**. Model and threshold
+selection used Validation; Test evaluated the fixed model.
+
+| Metric | Validation | Test |
+|---|---:|---:|
+| Average precision | 0.22211 | 0.21742 |
+| ROC-AUC | 0.67157 | 0.66039 |
+| F1 at the selected threshold | 0.2822 | 0.2753 |
+
+The [Model Card](docs/model_card.md) records preprocessing, partitions, artifacts,
+and interpretation limits. Test and subgroup calibration remain unassessed.
 
 ## Scope Guardrails
 
-Version 1 targets one binary task: 30-day hospital readmission. Planned delivery
+Version 1 targets one binary task: 30-day hospital readmission. The complete scope
 includes three fairness metrics (demographic parity, equalized odds, and PPV
 differences) with confidence intervals, significance tests, suppression and severity
 policies; a guarded function-calling agent; a 12-scenario evaluation harness; PDF
 reporting; MLflow tracking; Docker and CI/CD; a public deployment; monitoring;
-white-label report configuration; and a CLI batch mode. These are planned product
-requirements, not claims that all features are currently implemented.
+white-label report configuration; and a CLI batch mode. The status table above
+distinguishes working components from remaining product requirements.
 
 Outside Version 1: regression, multiclass and time-to-event tasks; image/text
 models; causal explanations; automatic bias mitigation or retraining users' models;
@@ -119,13 +131,83 @@ python -m pip install -r requirements-dev.txt
 
 The development requirements also install the application dependencies.
 
-## Run the Application
+### 4. Configure OpenAI
+
+Create `.env` in the repository root with your own key:
+
+```dotenv
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_TIMEOUT_SECONDS=60
+```
+
+The timeout shown is per provider request. The agent has a separate total budget
+of 180 seconds by default, checked between operations. Existing process environment
+variables take precedence over `.env`. If a stale session key overrides the file:
+
+```powershell
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+```
+
+Keep `.env` local and excluded from Git.
+
+## Run a CSV Audit
+
+The bundled demo CSV contains ready-made predictions:
+
+```powershell
+python -m healthequity audit data/samples/diabetes_audit_sample.csv
+```
+
+This command makes live OpenAI requests and consumes API tokens. Default mappings
+are `outcome`, `prediction`, optional `score`, and the present columns from
+`race`, `gender`, `age`, and `payer_code`. For another de-identified CSV:
+
+```powershell
+python -m healthequity audit my_export.csv --outcome actual --prediction label --groups cohort region --score risk
+```
+
+Labels must be numeric 0/1, with 1 as the positive class. Use `--no-score` to ignore
+a score column. The current CLI requires supplied predictions and accepts CSV.
+XLSX and session-based training are planned upload-flow work.
+
+Each invocation creates a unique directory under `outputs/agent_runs/`:
+
+| Artifact | Contents |
+|---|---|
+| `run.json` | Lifecycle, timing, mapping, structural fingerprint, trace ID and any failure |
+| `trace.json` | Model/tool history, usage, timing, policy corrections, claim verdicts and summary grounding when reached |
+| `findings.json` | Final findings after successful validation |
+| `claims_validation.json` | Verdict when claims validation was reached |
+
+The CLI invocation directory ID differs from the agent trace ID; `run.json` links
+them. Input/setup failures save a lifecycle record, while agent failures retain
+the available failed trace. Output JSON files are written atomically. The default
+artifact directory is excluded from Git. See [CLI](docs/cli.md) for exit codes,
+storage/interruption limits, and custom output directories.
+
+### Review saved outputs locally
+
+```powershell
+python -m healthequity.review_saved --last 5
+python -m healthequity.review_saved --last 5 --ground-summary
+python -m healthequity.review_saved --last 1 --ground-summary --show-summary
+```
+
+Review uses saved aggregate evidence with the current rules, makes no provider
+requests, and leaves original artifacts unchanged. Grounding mode previews the
+trusted-fact summary after draft validation. Original live status and offline
+verdict are reported separately. Runs with no final response or invalid incomplete
+findings are unavailable for rechecking.
+
+## Streamlit Prototype
 
 ```powershell
 python -m streamlit run app/app.py
 ```
 
-Open the local URL shown in the terminal.
+Open the local URL shown in the terminal. The interface currently displays a
+placeholder; use the CLI for the implemented audit workflow.
 
 ## Explore the Data
 
@@ -199,10 +281,16 @@ Run linting:
 python -m ruff check .
 ```
 
-Run all tests and measure coverage for both application and fairness modules:
+Run all offline tests:
 
 ```powershell
-python -m pytest --cov=app --cov=fairness --cov-report=term-missing
+python -m pytest -q
+```
+
+Measure coverage for the application, fairness engine, and CLI:
+
+```powershell
+python -m pytest --cov=app --cov=fairness --cov=healthequity --cov-report=term-missing
 ```
 
 Check dependency compatibility:
@@ -211,14 +299,14 @@ Check dependency compatibility:
 python -m pip check
 ```
 
-The November 5, 2026 review and follow-up passed 180 tests and measured 98% combined line
-coverage for `app` and `fairness` (100% for the included `app` modules). Coverage
-excludes the two live-API demonstration scripts and does not measure notebook
-training or complete agent behavior.
+The latest confirmed full local run passed **1,083 tests**. Provider/orchestration
+tests use scripted responses or injected clients; the standard test suite makes
+no live OpenAI calls. Live CLI benchmarks are separate paid runs.
 
-GitHub Actions, pre-commit, and `.coveragerc` are configured to cover both `app`
-and `fairness`. The updated coverage settings have been verified locally; a new
-GitHub CI run is required after these changes are committed and pushed.
+The test count does not provide a new coverage measurement. Coverage excludes
+the two live-API demonstration scripts and does not measure notebook training.
+GitHub Actions and pre-commit run Ruff and tests with coverage for `app`,
+`fairness`, and `healthequity`. Confirm CI for this revision after pushing.
 
 With the project environment active, enable and run local commit checks:
 
@@ -229,14 +317,16 @@ python -m pre_commit run --all-files
 
 ## Project Structure
 
-- `app/`: Streamlit placeholder, data helpers, schemas, validation, profiling,
-  analysis selection, and plan correction.
+- `app/`: Agent/provider adapters, typed contracts, profiling, plan/policy guards,
+  claims validation, summary grounding, data helpers, and the Streamlit placeholder.
+- `healthequity/`: CSV audit CLI, artifact persistence, and offline saved-run review.
 - `fairness/`: Deterministic metrics, statistics, policies, and scenario generation.
 - `config.yaml`: Group eligibility and severity thresholds.
 - `data/`: Source dataset, identifier mappings, and the demo audit sample.
 - `docs/`: Scope, data/model cards, implementation decisions, and methodology.
 - `notebooks/`: Exploration, baseline development, and fairness verification.
 - `test/`: Automated tests.
+- `outputs/agent_runs/`: Local audit artifacts, excluded from Git.
 - `.github/workflows/`: Continuous integration workflow.
 
 ## Documentation
@@ -249,7 +339,10 @@ python -m pre_commit run --all-files
 - [Analysis Guardrails](docs/analysis-guardrails.md)
 - [Tool Interfaces](docs/tool-interfaces.md)
 - [Claims Validation](docs/claims-validation.md)
-- [Implementation Decisions](docs/implementation-decisions.md)
+- [CLI](docs/cli.md)
+- [Agent Protocol](docs/agent-protocol.md)
+- [Live Verification Record](docs/week3-agent-verification.md)
+- [Implementation Decisions - baseline review](docs/implementation-decisions.md)
 
 ## Data Source
 

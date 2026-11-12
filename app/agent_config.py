@@ -6,6 +6,7 @@ from app.audit_schemas import AuditBaseModel
 
 
 class AgentConfig(AuditBaseModel):
+    max_claim_rewrites: int = Field(default=1, ge=0, le=1)
     max_tool_calls: int = Field(
         default=12,
         ge=1,

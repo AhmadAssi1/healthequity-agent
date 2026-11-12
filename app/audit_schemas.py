@@ -78,7 +78,13 @@ class GroupMetrics(AuditBaseModel):
 
 class SuppressedGroup(AuditBaseModel):
     group_value: str | int | float | bool | None
-    suppression_reason: str = Field(min_length=1)
+    suppression_reason: str = Field(
+        min_length=1,
+        description=(
+            "Start with 'Insufficient evidence: ' and explain the supplied "
+            "suppression reason codes without inventing counts."
+        ),
+    )
 
     @field_validator("suppression_reason")
     @classmethod

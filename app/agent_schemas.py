@@ -109,6 +109,13 @@ class SeverityCorrection(AuditBaseModel):
         return self
 
 
+class SummaryGroundingRecord(AuditBaseModel):
+    proposed_summary: str = Field(min_length=1, pattern=r"\S")
+    grounded_summary: str = Field(min_length=1, pattern=r"\S")
+    source: Literal["trusted_tool_evidence"] = "trusted_tool_evidence"
+    validation: ClaimsValidationOutput
+
+
 class AgentRunTrace(AuditBaseModel):
     run_id: str = Field(min_length=1, pattern=r"\S")
     agent_config: AgentConfig
@@ -126,6 +133,8 @@ class AgentRunTrace(AuditBaseModel):
     turns: list[AgentTurnRecord] = Field(default_factory=list)
     severity_corrections: list[SeverityCorrection] = Field(default_factory=list)
     claims_validation: ClaimsValidationOutput | None = None
+    claims_validation_attempts: list[ClaimsValidationOutput] = Field(default_factory=list, max_length=2)
+    summary_grounding: SummaryGroundingRecord | None = None
     error: str | None = Field(
         default=None,
         min_length=1,
@@ -134,6 +143,13 @@ class AgentRunTrace(AuditBaseModel):
 
     @model_validator(mode="after")
     def validate_run(self):
+        if self.status == "completed" and self.summary_grounding is not None and not self.summary_grounding.validation.passed:
+            raise ValueError("A completed audit requires its grounded summary to pass validation.")
+        if self.claims_validation_attempts:
+            if self.claims_validation != self.claims_validation_attempts[-1]:
+                raise ValueError("The final claims verdict must match the last recorded attempt.")
+            if any(verdict.passed for verdict in self.claims_validation_attempts[:-1]):
+                raise ValueError("Claims validation must stop after a passing verdict.")
         if self.status == "completed" and self.claims_validation is not None and not self.claims_validation.passed:
             raise ValueError("A completed audit cannot have a failed claims verdict.")
         if self.status == "running":
@@ -195,6 +211,8 @@ class AgentRunResult(AuditBaseModel):
 
     @model_validator(mode="after")
     def validate_completed_run(self):
+        if self.trace.summary_grounding is not None and self.trace.summary_grounding.validation != self.claims_validation:
+            raise ValueError("The final verdict must match grounded-summary validation.")
         if self.claims_validation is not None and not self.claims_validation.passed:
             raise ValueError("A successful run cannot have a failed claims verdict.")
         if self.trace.claims_validation is not None and self.claims_validation != self.trace.claims_validation:

@@ -2,6 +2,7 @@
 source =
     app
     fairness
+    healthequity
 omit =
     app/check_connection.py
     app/check_tool_calling.py

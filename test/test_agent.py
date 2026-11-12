@@ -290,6 +290,41 @@ def test_claims_require_trusted_quality_warnings(claims_case):
     assert any(issue.message.startswith("warnings:") for issue in verdict.issues)
 
 
+@pytest.mark.parametrize(("text", "code"), [
+    ('The group "Invented" has higher selection.', "unsupported_group"),
+    ('wrong_attribute: "A" has higher selection.', "unsupported_group"),
+    ('No score exists, but the gap is because of discrimination.', "causal_language"),
+])
+def test_narrative_group_and_cause_rules_are_connected_to_claim_validation(claims_case, text, code):
+    findings, evidence = claims_case
+    findings.summary = text
+    assert code in {issue.code for issue in validate_claims(findings, evidence).issues}
+
+
+def test_verified_numeric_group_labels_are_not_outcome_numbers(claims_case):
+    findings, evidence = claims_case
+    for collection in (findings.attributes[0].groups, evidence.metrics.results[0].groups):
+        collection[0].group_value = "[70-80)"
+    findings.summary = 'The group: "[70-80)" group requires review.'
+    assert validate_claims(findings, evidence).passed
+
+
+@pytest.mark.parametrize("text", ["The test returned p=0.123451.", "The 95% CI: 0.123451 to 0.234562."])
+def test_statistical_annotations_still_require_numeric_evidence(claims_case, text):
+    findings, evidence = claims_case
+    findings.summary = text
+    codes = {issue.code for issue in validate_claims(findings, evidence).issues}
+    assert "unsupported_number" in codes
+    assert "unsupported_group" not in codes
+
+
+@pytest.mark.parametrize(("text", "passed"), [("Two groups were included.", True), ("Nineteen groups were included.", False)])
+def test_word_count_claims_are_checked_against_trusted_counts(claims_case, text, passed):
+    findings, evidence = claims_case
+    findings.summary = text
+    assert validate_claims(findings, evidence).passed is passed
+
+
 def test_claim_failure_stops_agent_and_preserves_verdict_in_failed_trace(session):
     class IncorrectSummaryProvider(ScriptedProvider):
         def generate(self, **kwargs):
@@ -304,7 +339,102 @@ def test_claim_failure_stops_agent_and_preserves_verdict_in_failed_trace(session
     assert trace.status == "failed"
     assert trace.claims_validation.passed is False
     assert trace.claims_validation.issues[0].code == "unsupported_number"
+    assert len(trace.claims_validation_attempts) == 2
+    assert all(not verdict.passed for verdict in trace.claims_validation_attempts)
     assert AgentRunTrace.model_validate_json(trace.model_dump_json()) == trace
+
+
+def test_claim_rewrite_corrects_unsupported_text_without_repeating_tools(session):
+    class Provider(ScriptedProvider):
+        def generate(self, **kwargs):
+            result = super().generate(**kwargs)
+            if result.structured_output is not None and self.final_count == 1:
+                result.structured_output["summary"] = "The audit used 999999999 rows."
+            return result
+
+    provider = Provider(session)
+    result = agent_for(session, provider).run()
+    assert provider.final_count == 2
+    assert [v.passed for v in result.trace.claims_validation_attempts] == [False, True]
+    assert result.claims_validation.passed
+    assert len(executed(result.trace)) == 6
+    assert len(result.trace.turns) == 9
+    assert result.trace.turns[-2].error == "Final findings failed claim validation."
+    messages = provider.requests[-1]["messages"]
+    assert any(m.text and "unsupported_number" in m.text for m in messages)
+    assert provider.requests[-1]["tools"] == []
+
+
+def test_live_style_suppression_reason_codes_trigger_one_corrective_rewrite():
+    frame = pd.DataFrame({
+        "actual": [0, 0, 1, 1] * 2, "predicted": [0, 1, 0, 1] * 2,
+        "group": ["A"] * 4 + ["B"] * 4,
+    })
+    session = AuditToolSession(frame, ColumnMapping(outcome="actual", prediction="predicted", groups=["group"]))
+
+    class Provider(ScriptedProvider):
+        def generate(self, **kwargs):
+            result = super().generate(**kwargs)
+            if result.structured_output is not None and self.final_count == 1:
+                for group in result.structured_output["attributes"][0]["suppressed_groups"]:
+                    group["suppression_reason"] = "Group excluded due to both below_min_group_size and below_min_positive_outcomes"
+            return result
+
+    provider = Provider(session)
+    result = agent_for(session, provider).run()
+    assert provider.final_count == 2
+    assert [v.passed for v in result.trace.claims_validation_attempts] == [False, True]
+    assert {i.code for i in result.trace.claims_validation_attempts[0].issues} == {"missing_insufficient_evidence"}
+    assert all(g.suppression_reason.startswith("Insufficient evidence:")
+               for g in result.findings.attributes[0].suppressed_groups)
+
+
+def test_claim_rewrite_has_no_additional_schema_retry(session):
+    class Provider(ScriptedProvider):
+        def generate(self, **kwargs):
+            result = super().generate(**kwargs)
+            if result.structured_output is not None:
+                if self.final_count == 1:
+                    result.structured_output["summary"] = "The audit used 999999999 rows."
+                else:
+                    result.structured_output = {}
+            return result
+
+    provider = Provider(session)
+    with pytest.raises(AgentRunError) as caught:
+        agent_for(session, provider).run()
+    assert provider.final_count == 2
+    assert len(caught.value.trace.claims_validation_attempts) == 1
+    assert caught.value.trace.claims_validation.passed is False
+
+
+def test_claim_rewrite_respects_model_turn_budget(session):
+    class Provider(ScriptedProvider):
+        def generate(self, **kwargs):
+            result = super().generate(**kwargs)
+            if result.structured_output is not None:
+                result.structured_output["summary"] = "The audit used 999999999 rows."
+            return result
+
+    provider = Provider(session)
+    with pytest.raises(AgentRunError, match="model-turn limit") as caught:
+        agent_for(session, provider, AgentConfig(max_model_turns=8)).run()
+    assert provider.final_count == 1
+    assert len(caught.value.trace.claims_validation_attempts) == 1
+
+
+def test_claim_rewrite_can_be_disabled(session):
+    class Provider(ScriptedProvider):
+        def generate(self, **kwargs):
+            result = super().generate(**kwargs)
+            if result.structured_output is not None:
+                result.structured_output["summary"] = "The audit used 999999999 rows."
+            return result
+
+    provider = Provider(session)
+    with pytest.raises(AgentRunError, match="Claim validation failed"):
+        agent_for(session, provider, AgentConfig(max_claim_rewrites=0)).run()
+    assert provider.final_count == 1
 
 
 @pytest.mark.parametrize("all_suppressed", [False, True])
@@ -465,6 +595,39 @@ def test_invalid_findings_schema_is_retried_once_and_logged(session, first_final
     assert result.trace.turns[-2].error == "AuditFindings schema validation failed."
     assert result.trace.turns[-2].response.structured_output == first_final
     assert "Validation feedback" in provider.requests[-1]["messages"][-1].text
+
+
+def test_final_schema_is_bound_to_all_mapped_attributes_with_specific_repair_feedback():
+    frame = pd.DataFrame({"actual": [0, 0, 1, 1] * 2, "predicted": [0, 1, 0, 1] * 2,
+                          "group": ["A"] * 4 + ["B"] * 4, "other": ["X"] * 4 + ["Y"] * 4})
+    session = AuditToolSession(frame, ColumnMapping(outcome="actual", prediction="predicted", groups=["group", "other"]))
+
+    class Provider(ScriptedProvider):
+        def generate(self, **kwargs):
+            result = super().generate(**kwargs)
+            if result.structured_output is not None and self.final_count == 1:
+                result.structured_output["attributes"] = result.structured_output["attributes"][:1]
+            return result
+
+    provider = Provider(session)
+    result = agent_for(session, provider).run()
+    assert provider.final_count == 2
+    assert {a.attribute for a in result.findings.attributes} == {"group", "other"}
+    schema = provider.requests[-1]["response_schema"]
+    assert schema["properties"]["attributes"]["minItems"] == 2
+    assert schema["properties"]["attributes"]["maxItems"] == 2
+    assert schema["$defs"]["AttributeFindings"]["properties"]["attribute"]["enum"] == ["group", "other"]
+    declared = schema["$defs"]["DatasetSummary"]["properties"]["group_columns"]
+    assert declared["items"]["enum"] == ["group", "other"]
+    assert declared["minItems"] == declared["maxItems"] == 2
+    warnings = schema["properties"]["warnings"]
+    expected_flags = session.get_evidence().profile.data_quality_flags
+    assert warnings["minItems"] == warnings["maxItems"] == len(expected_flags)
+    if expected_flags:
+        assert warnings["items"]["enum"] == expected_flags
+    feedback = provider.requests[-1]["messages"][-1].text
+    assert 'Required attributes, each exactly once: ["group", "other"]' in feedback
+    assert 'Returned attribute names: ["group"]' in feedback
 
 
 def test_bad_json_keeps_response_text_usage_and_latency_through_retry(session):

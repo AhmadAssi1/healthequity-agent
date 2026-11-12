@@ -27,4 +27,4 @@ jobs:
         run: python -m ruff check .
 
       - name: Run tests with coverage
-        run: python -m pytest --cov=app --cov=fairness --cov-report=term-missing
+        run: python -m pytest --cov=app --cov=fairness --cov=healthequity --cov-report=term-missing

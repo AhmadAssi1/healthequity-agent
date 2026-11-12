@@ -9,6 +9,11 @@ from decimal import Decimal
 from math import isclose
 
 from app.audit_schemas import AuditFindings
+from app.narrative_validation import (
+    check_group_mentions,
+    has_causal_claim,
+    has_unsupported_approval,
+)
 from app.tool_contracts import AuditEvidence, ClaimIssue, ClaimsValidationOutput
 from fairness.policy import classify_severity
 
@@ -117,6 +122,15 @@ def validate_claims(
     texts = [("summary", findings.summary)]
     texts += [(f"warnings[{i}]", text) for i, text in enumerate(findings.warnings)]
     texts += [(f"limitations[{i}]", text) for i, text in enumerate(findings.limitations)]
+    for attribute in findings.attributes:
+        texts += [
+            (f"attributes.{attribute.attribute}.suppressed_groups[{i}].suppression_reason", group.suppression_reason)
+            for i, group in enumerate(attribute.suppressed_groups)
+        ]
+    group_labels = {
+        name: [group.group_value for group in [*item.groups, *item.suppressed_groups]]
+        for name, item in expected_attributes.items()
+    }
     # Only visible aggregate numeric evidence is eligible for narrative support.
     supported_numbers = []
 
@@ -133,21 +147,23 @@ def validate_claims(
 
     collect(evidence.model_dump())
     supported_numbers.append(len(expected_attributes))
+    for attribute in expected_attributes.values():
+        supported_numbers.extend((len(attribute.groups), len(attribute.suppressed_groups)))
     number_pattern = r"(?<![\w.])[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?\s*(?:%|percentage points?|percent)?"
     for path, text in texts:
+        prose, group_issues = check_group_mentions(text, group_labels, path)
+        issues.extend(group_issues)
+        if has_causal_claim(prose):
+            issue("causal_language", path, "Causal conclusions are unsupported by this audit.")
+        if has_unsupported_approval(prose):
+            issue("evidence_mismatch", path, "An approval or fairness guarantee is unsupported.")
         for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
-            # Screen affirmative claims; explicit negation/limitations are allowed.
-            affirmative = not re.search(r"\b(?:not|no|cannot|never|without|neither)\b", sentence, re.IGNORECASE)
-            if affirmative and re.search(r"\b(?:causes?|caused by|proves? causation|causal effect)\b", sentence, re.IGNORECASE):
-                issue("causal_language", path, "Causal conclusions are unsupported by this audit.")
-            if affirmative and re.search(r"\b(?:proves? fairness|guarantees? fairness|is fair|legally compliant|clinically safe|validation (?:has )?passed)\b", sentence, re.IGNORECASE):
-                issue("evidence_mismatch", path, "An approval or fairness guarantee is unsupported.")
             mentioned = [item for name, item in expected_attributes.items()
                          if re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", sentence, re.IGNORECASE)]
             suppressed = any(item.suppressed_groups for item in (mentioned or expected_attributes.values()))
             if suppressed and re.search(r"\bno (?:\w+\s+){0,3}groups? (?:were |was |are )?suppressed\b|\ball groups (?:were |are )?(?:eligible|included)\b", sentence, re.IGNORECASE):
                 issue("missing_insufficient_evidence", path, "The narrative contradicts group suppression.")
-        for match in re.finditer(number_pattern, text, re.IGNORECASE):
+        for match in re.finditer(number_pattern, prose, re.IGNORECASE):
             token = match.group().strip()
             numeric = re.match(r"[-+\d,.eE]+", token).group()
             value = float(numeric.replace(",", ""))
@@ -158,6 +174,7 @@ def validate_claims(
             percent = bool(re.search(r"%|percent", token, re.IGNORECASE))
             candidates = [n * 100 for n in supported_numbers if 0 <= n <= 1] if percent else supported_numbers
             if not any(abs(value - n) <= tolerance for n in candidates):
-                issue("unsupported_number", path, "A narrative number has no matching aggregate evidence.")
+                issue("unsupported_number", path, "Narrative number " + repr(token)
+                      + " has no matching aggregate evidence. Use an evidence value rather than an unsupported bound.")
 
     return ClaimsValidationOutput(passed=not issues, issues=issues)
