@@ -157,7 +157,7 @@ Each run corrected race PPV severity from the model's substantial label to the
 policy's watch label. The original model response and the correction are retained.
 Historical failed batches above remain part of the record.
 
-### Remaining interpretation defect
+### Interpretation defect observed before summary grounding
 
 Direct inspection of the final summaries found a contradiction not caught by
 the rule-based validator. For example, run f9b75ca54e2c48c2ab6922e156a516a0 calls
@@ -186,7 +186,42 @@ This stage is local and introduces no provider request. It is intended to remove
 the observed race-PPV severity contradiction and overly broad significance prose
 from the final summary. It does not certify unrestricted text in limitations.
 
-Ruff passed for the changed code. New tests and read-only preview with
-`python -m healthequity.review_saved --last 5 --ground-summary` still require
-confirmation. Such preview is offline verification of the new postprocessing,
-not five additional live runs or alteration of historical outcomes.
+### Confirmed follow-up verification
+
+The user subsequently reported the full local suite passing: **1,083 tests in
+23.67 seconds**. Ruff was also reported clean. These are recorded results from
+the user's terminal, not a new test execution performed while updating this log.
+
+The read-only command
+`python -m healthequity.review_saved --last 5 --ground-summary` returned
+`recheck: passed`, an empty issues list, and `summary_grounded: true` for each
+of the five completed runs listed above. The user also displayed the grounded
+summary for run `714405af53d549fba5a0a105c13a966d`; its race PPV difference
+retained the policy severity `watch`.
+
+This confirms offline verification of the new summary postprocessing on all
+five saved candidates. It does not represent five additional live runs or
+change their historical artifacts. The recorded live runtime evidence and the
+subsequent offline grounding evidence remain separate.
+
+Free-text limitations and further interpretations still require human review.
+The scoped review below records the user's review of one saved report only.
+
+### Human review of one report's limitations - November 12, 2026
+
+Ahmad Assi reviewed the three limitations in saved run
+`714405af53d549fba5a0a105c13a966d`, discussed their meaning, and explicitly
+approved them with a clarification to the third limitation:
+
+- Associations and statistical tests do not establish causal relationships.
+- Suppressed groups have insufficient evidence; exclusion does not demonstrate
+  fairness for those populations.
+- Result quality depends on the accuracy of outcomes, predictions, and group
+  labels. Metrics that use probability scores, such as AUROC, also depend on
+  score accuracy. This clarifies the original score/outcome-only wording.
+
+The saved report contains no separate recommendations section. Its historical
+findings and trace were not modified. This review covers those limitations and
+the approved clarification; it does not approve the original model summary or
+certify every report, clinical suitability, or legal compliance. Future free-text
+findings still require review.
