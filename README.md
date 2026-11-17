@@ -299,7 +299,7 @@ Check dependency compatibility:
 python -m pip check
 ```
 
-The latest confirmed full local run passed **1,162 tests**. Provider/orchestration
+The latest confirmed full local run passed **1,170 tests**. Provider/orchestration
 tests use scripted responses or injected clients; the standard test suite makes
 no live OpenAI calls. Live CLI benchmarks are separate paid runs.
 

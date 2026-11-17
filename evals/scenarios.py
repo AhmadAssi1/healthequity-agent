@@ -5,7 +5,9 @@ derive expected answers. CIs, severity, narrative scoring, and the evaluation
 runner belong to the subsequent evaluation step.
 """
 
+import csv
 import hashlib
+import io
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "data/samples/diabetes_audit_sample.csv"
 MANIFEST = Path(__file__).with_name("diabetes_slice_answers.json")
 RATES = ("selection_rate", "tpr", "fpr", "ppv")
+
+
+def source_rows_hash(header: list[str], rows: list[list[str]]) -> str:
+    """Hash original CSV tokens, without platform-dependent float formatting."""
+    canonical = json.dumps([header, rows], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 @dataclass
@@ -188,15 +196,19 @@ def build_scenarios(source_path: str | Path = SOURCE) -> list[Scenario]:
     source_bytes = source_path.read_bytes().replace(b"\r\n", b"\n")
     if hashlib.sha256(source_bytes).hexdigest() != manifest["source_sha256"]:
         raise ValueError("Diabetes evaluation source hash mismatch; review fixture provenance.")
-    source = pd.read_csv(source_path, keep_default_na=False)
+    raw_rows = list(csv.reader(io.StringIO(source_bytes.decode("utf-8"))))
+    header, records = raw_rows[0], raw_rows[1:]
+    source = pd.read_csv(io.BytesIO(source_bytes), keep_default_na=False, float_precision="round_trip")
     for spec in manifest["slices"]:
-        data = source.loc[source["gender"].eq(spec["gender"])].sample(
-            n=spec["row_count"], random_state=42,
-        ).reset_index(drop=True)
-        canonical_csv = data.to_csv(index=False, lineterminator="\n")
-        digest = hashlib.sha256(canonical_csv.encode("utf-8")).hexdigest()
-        if digest != spec["slice_sha256"]:
-            raise ValueError("Diabetes slice hash mismatch; review sampling or parsing changes.")
+        indices = spec["source_row_indices"]
+        if (len(indices) != spec["row_count"] or len(set(indices)) != len(indices)
+                or any(type(i) is not int or not 0 <= i < len(records) for i in indices)):
+            raise ValueError("Invalid frozen Diabetes source row indices.")
+        if source_rows_hash(header, [records[i] for i in indices]) != spec["source_rows_sha256"]:
+            raise ValueError("Diabetes slice hash mismatch; review selected source rows.")
+        data = source.iloc[indices].reset_index(drop=True)
+        if not data["gender"].eq(spec["gender"]).all():
+            raise ValueError("Frozen Diabetes slice does not match its declared gender.")
         cases.append(Scenario(
             spec["name"], f"Fixed 1,000-stay {spec['gender']} Diabetes slice; audit race.",
             data,

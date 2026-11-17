@@ -102,3 +102,26 @@ cancelling in-progress paid evaluation batches.
   `b84dd86039844800b41a29e51e440ec3`.
 - GitHub-hosted execution is not yet verified. Local workflow creation does not
   establish that the repository secret is configured or the workflow is green.
+
+## First GitHub execution and fixture portability fix
+
+On commit `4ded3d8d2f7881d3860aea399f191126c5e0977f`, CI run
+`44060390726` and evaluation run `44060390623` failed in deterministic tests
+with `Diabetes slice hash mismatch`. The live job was skipped, so this incident
+does not establish an API-key or live-model failure.
+
+The old slice identity depended on pandas parsing and reserializing floating
+point scores. Normalizing line endings alone did not make that representation
+portable. The fix freezes the exact existing source-row selections and hashes
+original CSV string tokens before numerical parsing. Full normalized-source
+hash verification remains mandatory, and source scores use round-trip parsing.
+The old source hash, historical slice hashes, confusion cells, duplicate counts,
+and row counts were verified unchanged against the committed manifest. The
+historical serialization hashes remain recorded as legacy provenance.
+
+Regression coverage rejects changed index order, duplicate/out-of-range indices,
+and mismatched source-row hashes; it also checks CRLF/LF equivalence, exact score
+round trips, and independence from pandas CSV serialization or real-data
+resampling. Local validation: 69 evaluation tests passed; full suite 1,170 passed
+in 19.98 seconds; Ruff clean. Linux/GitHub verification of the fix still requires
+a new pushed commit. The failed GitHub runs remain part of the record.

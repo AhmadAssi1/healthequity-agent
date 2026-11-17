@@ -1,5 +1,10 @@
 """Check fixture ground truth against independent arithmetic and engine outputs."""
 
+import csv
+import io
+import json
+
+import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
@@ -7,6 +12,7 @@ from app.analysis_counts import compute_analysis_counts
 from app.analysis_selection import select_analyses
 from app.profiling import profile_dataset
 from app.validation import validate_dataset
+from evals import scenarios
 from evals.scenarios import SOURCE, build_scenarios
 from fairness.metrics import compute_fairness_gaps, compute_group_metrics
 from fairness.policy import SuppressionPolicy
@@ -121,3 +127,56 @@ def test_real_slices_are_disjoint_and_keep_fixed_model_scores(cases):
     # All audit columns come from the pinned baseline export, without retraining.
     assert female.expected["source_sha256"] == male.expected["source_sha256"]
     assert len(female.data) == len(male.data) == 1000
+
+
+def test_fixture_hashes_do_not_depend_on_pandas_csv_float_serialization(monkeypatch):
+    def unexpected_serialization(*args, **kwargs):
+        pytest.fail("Fixture identity must not depend on pandas float serialization")
+    monkeypatch.setattr(pd.DataFrame, "to_csv", unexpected_serialization)
+    assert len(build_scenarios()) == 12
+
+
+def test_frozen_real_slices_do_not_repeat_version_dependent_sampling(monkeypatch):
+    original = pd.DataFrame.sample
+    def sample(frame, *args, **kwargs):
+        if len(frame) > 1000:
+            pytest.fail("Real evaluation selections must use frozen source row indices")
+        return original(frame, *args, **kwargs)
+    monkeypatch.setattr(pd.DataFrame, "sample", sample)
+    assert len(build_scenarios()) == 12
+
+
+def test_source_line_endings_do_not_change_fixture_identity(tmp_path, cases):
+    source = tmp_path / "windows.csv"
+    source.write_bytes(SOURCE.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+    for rebuilt in build_scenarios(source):
+        assert_frame_equal(rebuilt.data, cases[rebuilt.name].data)
+
+
+@pytest.mark.parametrize("change", ["order", "out_of_bounds", "duplicate", "hash"])
+def test_changed_frozen_selection_is_rejected(tmp_path, monkeypatch, change):
+    manifest = json.loads(scenarios.MANIFEST.read_text())
+    spec = manifest["slices"][0]
+    if change == "order":
+        spec["source_row_indices"].reverse()
+    elif change == "out_of_bounds":
+        spec["source_row_indices"][0] = 999999999
+    elif change == "duplicate":
+        spec["source_row_indices"][0] = spec["source_row_indices"][1]
+    else:
+        spec["source_rows_sha256"] = "0" * 64
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(scenarios, "MANIFEST", path)
+    with pytest.raises(ValueError, match="(?:indices|slice hash mismatch)"):
+        build_scenarios()
+
+
+def test_score_values_round_trip_from_original_csv_tokens(cases):
+    rows = list(csv.reader(io.StringIO(SOURCE.read_text(encoding="utf-8"))))
+    header, records = rows[0], rows[1:]
+    score_column = header.index("score")
+    manifest = json.loads(scenarios.MANIFEST.read_text())
+    for spec in manifest["slices"]:
+        expected = [float(records[i][score_column]) for i in spec["source_row_indices"]]
+        assert cases[spec["name"]].data.score.tolist() == expected

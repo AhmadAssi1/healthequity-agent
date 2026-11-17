@@ -37,17 +37,23 @@ functions. It fixes suppression to n >= 50 and positive outcomes >= 10, and
 records expected statistical test methods per rate. Tests compare these
 expectations against actual fixture counts, the fairness engine, and planner.
 
-The real fixtures filter the exported Test audit sample by gender, then sample
-1,000 rows with pandas `random_state=42`. They are disjoint encounter slices;
+The real fixtures were originally selected by filtering the exported Test audit
+sample by gender and sampling 1,000 rows with pandas `random_state=42`.
+Those exact selections and their order are now pinned as zero-based source-row
+indices; runtime loading does not repeat version-dependent sampling.
+They are disjoint encounter slices;
 this does not assert that patient identities are disjoint. Audit race only.
 Model scores and predictions are reused unchanged; no tuning or retraining.
 These are engineering evaluation examples, not new independent clinical test
 sets, and the small slices do not replace the full-data audit.
 
 `evals/diabetes_slice_answers.json` pins source and slice SHA-256 hashes,
-model provenance, and independently counted confusion cells. Hashes normalize
-CRLF to LF, and slice CSV serialization explicitly uses LF, so Windows/Linux
-line endings do not change the fixture identity. Runtime loading
+model provenance, and independently counted confusion cells. Source bytes
+normalize CRLF to LF. Slice identity hashes compact UTF-8 JSON containing the
+original CSV header and selected string-valued source rows, before float parsing.
+It never hashes a pandas CSV reserialization. The original pandas slice hashes
+remain as legacy provenance, not runtime checks. Score parsing explicitly uses
+round-trip precision. Runtime loading
 checks hashes and derives answers from the stored cells rather than recomputing
 expected answers from the current input. Changes to data, parsing, or sampling
 must be reviewed explicitly; never regenerate golden answers to make a failed
