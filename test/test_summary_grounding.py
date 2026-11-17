@@ -6,11 +6,13 @@ import pandas as pd
 import pytest
 import test_agent as helpers
 
+from app.agent_errors import AgentRunError
 from app.audit_schemas import AuditFindings
 from app.claims_validation import validate_claims
 from app.schemas import ColumnMapping
-from app.summary_grounding import ground_summary
+from app.summary_grounding import SUMMARY_PLACEHOLDER, ground_summary, render_summary
 from app.tools import AuditToolSession
+from fairness.policy import SuppressionPolicy
 
 
 @pytest.fixture
@@ -43,6 +45,58 @@ def test_summary_grounding_does_not_mutate_evidence_or_draft(grounding_case):
     before = deepcopy((findings.model_dump(), evidence.model_dump()))
     ground_summary(findings, evidence)
     assert (findings.model_dump(), evidence.model_dump()) == before
+
+
+def test_renderer_produces_same_summary_without_a_model_draft(grounding_case):
+    findings, evidence = grounding_case
+    grounded, _ = ground_summary(findings, evidence)
+    assert render_summary(evidence) == grounded.summary
+    assert validate_claims(findings.model_copy(update={"summary": render_summary(evidence)}), evidence).passed
+
+
+def test_agent_supplies_canonical_summary_as_only_wire_schema_choice():
+    # The scripted provider intentionally ignores wire constraints. Existing
+    # claims-validation checks must still apply to such injected responses.
+    frame = pd.DataFrame({"actual": [0, 0, 1, 1] * 2, "predicted": [0, 1, 0, 1] * 2,
+                          "group": ["A"] * 4 + ["B"] * 4})
+    session = AuditToolSession(frame, ColumnMapping(outcome="actual", prediction="predicted", groups=["group"]))
+    provider = helpers.ScriptedProvider(session)
+    result = helpers.agent_for(session, provider).run()
+    final_requests = [r for r in provider.requests if r["response_schema"] is not None]
+    expected = render_summary(session.get_evidence())
+    assert all(r["response_schema"]["properties"]["summary"] == {
+        "type": "string", "enum": [SUMMARY_PLACEHOLDER],
+    }
+               for r in final_requests)
+    assert result.findings.summary == expected
+
+
+@pytest.mark.parametrize("defect", ["unsupported_limitation", "wrong_count"])
+def test_canonical_summary_does_not_rescue_invalid_other_fields(defect):
+    frame = pd.DataFrame({"actual": [0, 0, 1, 1] * 2, "predicted": [0, 1, 0, 1] * 2,
+                          "group": ["A"] * 4 + ["B"] * 4})
+    session = AuditToolSession(
+        frame, ColumnMapping(outcome="actual", prediction="predicted", groups=["group"]),
+        suppression_policy=SuppressionPolicy(min_group_size=2, min_positive_outcomes=1),
+    )
+
+    class DefectiveProvider(helpers.ScriptedProvider):
+        def generate(self, **kwargs):
+            response = super().generate(**kwargs)
+            if kwargs["response_schema"] is not None:
+                response.structured_output["summary"] = kwargs["response_schema"]["properties"]["summary"]["enum"][0]
+                if defect == "unsupported_limitation":
+                    response.structured_output["limitations"] = ["There are 99999999 rows."]
+                else:
+                    response.structured_output["attributes"][0]["groups"][0]["count"] -= 1
+            return response
+
+    with pytest.raises(AgentRunError) as failure:
+        helpers.agent_for(session, DefectiveProvider(session)).run()
+    verdict = failure.value.trace.claims_validation
+    assert not verdict.passed
+    expected_code = "unsupported_number" if defect == "unsupported_limitation" else "evidence_mismatch"
+    assert any(issue.code == expected_code for issue in verdict.issues)
 
 
 @pytest.mark.parametrize("problem", ["unsupported_summary_number", "incorrect_group_count"])

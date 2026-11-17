@@ -44,12 +44,26 @@ class AttributeToolInput(AuditBaseModel):
 
 
 class SelectAnalysesInput(AuditBaseModel):
-    proposed_plan: dict[str, JsonValue] | None = None
+    proposed_plan: dict[str, JsonValue] | None = Field(
+        default=None,
+        description=(
+            "Omit to obtain the deterministic permitted plan. If supplied, use "
+            "the full AnalysisPlan shape (score_available, attributes with "
+            "eligible_group_count, fairness_metrics, statistical_tests and "
+            "compute_auroc), not attribute-to-metric shorthand."
+        ),
+    )
 
 
 class SignificanceTestInput(AttributeToolInput):
     rates: list[Rate] | None = Field(default=None, min_length=1)
-    test_name: TestMethod | None = None
+    test_name: TestMethod | None = Field(
+        default=None,
+        description=(
+            "Omit for batch requests, including when multiple rates share a test. "
+            "Explicit test_name requires exactly one attribute and one rate."
+        ),
+    )
     n_resamples: int = Field(default=10_000, ge=1, le=100_000)
     seed: int = Field(default=42, ge=0, le=2**32 - 1)
 

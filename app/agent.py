@@ -21,7 +21,7 @@ from app.findings_policy import apply_severity_policy
 from app.llm_config import LLMConfig
 from app.llm_provider import LLMProvider, StructuredOutputError
 from app.llm_schemas import LLMMessage, LLMResponse, ToolCall, ToolResult
-from app.summary_grounding import ground_summary
+from app.summary_grounding import SUMMARY_PLACEHOLDER, ground_summary
 from app.tool_contracts import ClaimsValidationOutput, ToolDefinition
 from app.tools import TOOL_SPECS, AuditToolSession, ToolExecutionError
 
@@ -293,7 +293,12 @@ class AuditAgent:
                     "Use the aggregate evidence below as the source "
                     "for all quantitative fields and group names.\n"
                     "The warnings array must reproduce profile.data_quality_flags verbatim; "
-                    "put other interpretations in summary or limitations.\n"
+                    "put qualitative limitations in limitations.\n"
+                    "The summary field carries a short fixed transport value in the schema; "
+                    "the quantitative summary is rendered locally after validation. Copy the schema value exactly; "
+                    "do not summarize, round, paraphrase, or extend it.\n"
+                    "Describe limitations qualitatively without repeating numerical results, "
+                    "confidence bounds, seed metadata, or causal explanations.\n"
                     "Copy numeric JSON fields exactly at the supplied precision; "
                     "do not round p-values, statistics, rates, gaps, or interval bounds.\n"
                     "Apply the supplied severity policy. "
@@ -314,15 +319,10 @@ class AuditAgent:
             ),
         ]  
 
-    def _request_findings(
-        self,
-        trace: AgentRunTrace,
-        messages: list[LLMMessage],
-        started: float,
-        schema_retries: int | None = None,
-    ) -> AuditFindings:
-        final_messages = self._final_messages(messages)
+    def _findings_schema(self) -> dict:
+        """Per-run wire contract, also used by the API compatibility probe."""
         schema = AuditFindings.model_json_schema()
+        schema["properties"]["summary"] = {"type": "string", "enum": [SUMMARY_PLACEHOLDER]}
         expected_attributes = [item.attribute for item in self._session.get_evidence().metrics.results]
         # The reusable model permits arbitrary mapped attributes; the wire schema
         # must also enforce this particular run's expected size and vocabulary.
@@ -339,6 +339,18 @@ class AuditAgent:
         warning_schema.update(minItems=len(expected_flags), maxItems=len(expected_flags))
         if expected_flags:
             warning_schema["items"]["enum"] = expected_flags
+        return schema
+
+    def _request_findings(
+        self,
+        trace: AgentRunTrace,
+        messages: list[LLMMessage],
+        started: float,
+        schema_retries: int | None = None,
+    ) -> AuditFindings:
+        final_messages = self._final_messages(messages)
+        schema = self._findings_schema()
+        expected_attributes = [item.attribute for item in self._session.get_evidence().metrics.results]
         retry_limit = self._config.max_schema_retries if schema_retries is None else schema_retries
 
         for attempt in range(

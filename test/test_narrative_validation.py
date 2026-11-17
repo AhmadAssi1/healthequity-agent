@@ -13,6 +13,26 @@ GROUPS = {"race": ["Caucasian", "AfricanAmerican", None], "gender": ["Female", "
 
 
 @pytest.mark.parametrize("text", [
+    'The attribute group has two groups: "A" and "B".',
+    'The attribute group has two groups: \'A\' and \'B\'.',
+    'Two reportable groups: "A", "B" were included.',
+])
+def test_natural_language_group_lists_are_not_unknown_attributes(text):
+    _, issues = check_group_mentions(text, {"group": ["A", "B"]}, "summary")
+    assert not issues
+
+
+@pytest.mark.parametrize("text, labels", [
+    ('Groups: "Martian".', {"group": ["A", "B"]}),
+    ('Groups: "A".', {"race": ["A"], "gender": ["A"]}),
+    ('groups: "A".', {"groups": ["B"], "race": ["A"]}),
+    ('ethnicity: "A".', {"race": ["A"]}),
+])
+def test_group_lists_still_reject_unknown_ambiguous_or_misattributed_labels(text, labels):
+    assert check_group_mentions(text, labels, "summary")[1]
+
+
+@pytest.mark.parametrize("text", [
     'The largest group is race: "Caucasian".',
     'The comparison includes gender="Female".',
     'The group "Female" has an observed difference.',
@@ -216,6 +236,25 @@ def test_saved_live_policy_explanations_are_not_causal_disparity_claims(text):
     prose, issues = check_group_mentions(text, GROUPS, "limitations[0]")
     assert not issues
     assert not has_causal_claim(prose)
+
+
+@pytest.mark.parametrize("text", [
+    'Several race groups were suppressed due to having fewer than 50 total samples or fewer than 10 positive outcomes, namely race: "Other"; their fairness metrics remain unavailable.',
+    "Race groups were excluded because of fewer than 50 rows.",
+    "Race group findings are unavailable due to having fewer than 10 positive outcomes.",
+])
+def test_count_threshold_suppression_explanations_are_not_gap_causes(text):
+    assert not has_causal_claim(text)
+
+
+@pytest.mark.parametrize("text", [
+    "The race disparity is due to having fewer than 50 total samples.",
+    "The gap is because of fewer than 10 positive outcomes.",
+    "Race groups were suppressed due to discrimination.",
+    "Race groups were suppressed due to having fewer than 50 samples; discrimination causes the gap.",
+])
+def test_threshold_language_does_not_exempt_disparity_or_discrimination_causes(text):
+    assert has_causal_claim(text)
 
 
 @pytest.mark.parametrize("text", [

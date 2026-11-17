@@ -1,0 +1,90 @@
+name: Agent evaluation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-evals-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MLFLOW_TRACKING_URI: sqlite:///evaluation.db
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run deterministic evaluation tests
+        run: python -m pytest test/test_eval_scenarios.py test/test_eval_runner.py test/test_eval_probe.py test/test_eval_tracking.py -q
+      - name: Run offline evaluation and record MLflow runs
+        run: python -m evals --mlflow
+      - name: Publish evaluation summary
+        if: always()
+        run: python -m evals.ci_summary
+      - name: Retain evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deterministic-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/evaluations/
+            evaluation.db
+            mlartifacts/agent-evals/
+          if-no-files-found: warn
+          retention-days: 14
+
+  live:
+    needs: deterministic
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
+      OPENAI_TIMEOUT_SECONDS: "30"
+      MLFLOW_TRACKING_URI: sqlite:///evaluation.db
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check API configuration
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Set the repository Actions secret OPENAI_API_KEY."
+            exit 1
+          fi
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Probe the final-output schema before the live batch
+        run: python -m evals.probe
+      - name: Run live evaluation and record MLflow runs
+        run: python -m evals --live --mlflow
+      - name: Publish evaluation summary
+        if: always()
+        run: python -m evals.ci_summary
+      - name: Retain live evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/evaluations/
+            evaluation.db
+            mlartifacts/agent-evals/
+          if-no-files-found: warn
+          retention-days: 14

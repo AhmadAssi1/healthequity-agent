@@ -8,6 +8,11 @@ from app.claims_validation import validate_claims
 from app.tool_contracts import AuditEvidence
 from fairness.policy import classify_severity
 
+# A short transport value avoids embedding a long, changing report in an enum.
+# It makes no quantitative claim. Full findings must validate before the local
+# renderer replaces it with the evidence-bound report summary.
+SUMMARY_PLACEHOLDER = "Summary is rendered locally from validated aggregate evidence."
+
 _METRIC_NAMES = {
     "demographic_parity_difference": "Demographic parity difference",
     "equalized_odds_difference": "Equalized odds difference",
@@ -15,18 +20,9 @@ _METRIC_NAMES = {
 }
 
 
-def ground_summary(findings: AuditFindings, evidence: AuditEvidence) -> tuple[AuditFindings, SummaryGroundingRecord]:
-    """Replace only the summary with an auditable rendering of aggregate evidence.
-
-    The caller must first validate the full draft; this stage does not erase a
-    failed draft to manufacture a passing verdict. No numerical fields change.
-    P-values are reported without inventing a significance level or combined EOD
-    test. Free-text limitations remain subject to the existing limited screening.
-    """
-    findings = AuditFindings.model_validate(findings.model_dump())
+def render_summary(evidence: AuditEvidence) -> str:
+    """Render a quantitative summary directly from complete trusted evidence."""
     evidence = AuditEvidence.model_validate(evidence.model_dump())
-    if not validate_claims(findings, evidence).passed:
-        raise ValueError("The draft must pass claim validation before summary grounding.")
     intervals = {(item.attribute, item.metric): item for item in evidence.bootstrap.results}
     paragraphs = [
         f"This audit covers {evidence.profile.row_count} rows and {len(evidence.metrics.results)} mapped attributes."
@@ -62,8 +58,21 @@ def ground_summary(findings: AuditFindings, evidence: AuditEvidence) -> tuple[Au
         "These results describe associations and do not establish causation, clinical suitability, or legal compliance. "
         "No combined equalized-odds p-value is reported. Human review remains required."
     )
+    return "\n\n".join(paragraphs)
+
+
+def ground_summary(findings: AuditFindings, evidence: AuditEvidence) -> tuple[AuditFindings, SummaryGroundingRecord]:
+    """Ground a fully validated draft without rescuing rejected model claims.
+
+    The same renderer is exposed in the drafting schema before model generation.
+    Full-draft validation still precedes replacement and remains mandatory.
+    """
+    findings = AuditFindings.model_validate(findings.model_dump())
+    evidence = AuditEvidence.model_validate(evidence.model_dump())
+    if not validate_claims(findings, evidence).passed:
+        raise ValueError("The draft must pass claim validation before summary grounding.")
     proposed = findings.summary
-    findings.summary = "\n\n".join(paragraphs)
+    findings.summary = render_summary(evidence)
     findings = AuditFindings.model_validate(findings.model_dump())
     verdict = validate_claims(findings, evidence)
     return findings, SummaryGroundingRecord(

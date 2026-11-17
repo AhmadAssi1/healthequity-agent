@@ -1,0 +1,99 @@
+{
+  "source": "data/samples/diabetes_audit_sample.csv",
+  "source_sha256": "05e481b1befa159606ddaba18b8ad4451c11576648f030a0502e4c323b587506",
+  "source_model_run_id": "a68871a678b842828033d442632a63cc",
+  "sampling": "Filter by gender, sample n=1000 random_state=42, preserve sampled order. Empty race strings remain literal categories.",
+  "slices": [
+    {
+      "name": "diabetes_female",
+      "gender": "Female",
+      "row_count": 1000,
+      "slice_sha256": "96bd896490b83537ee35b583bf02cd503e79142970f33eecbc93de411e703f63",
+      "duplicate_rows": 2,
+      "confusion_counts": {
+        "": {
+          "tn": 17,
+          "fp": 2,
+          "fn": 1,
+          "tp": 0
+        },
+        "AfricanAmerican": {
+          "tn": 143,
+          "fp": 41,
+          "fn": 14,
+          "tp": 10
+        },
+        "Asian": {
+          "tn": 5,
+          "fp": 0,
+          "fn": 1,
+          "tp": 0
+        },
+        "Caucasian": {
+          "tn": 526,
+          "fp": 126,
+          "fn": 45,
+          "tp": 33
+        },
+        "Hispanic": {
+          "tn": 19,
+          "fp": 1,
+          "fn": 1,
+          "tp": 1
+        },
+        "Other": {
+          "tn": 11,
+          "fp": 1,
+          "fn": 2,
+          "tp": 0
+        }
+      }
+    },
+    {
+      "name": "diabetes_male",
+      "gender": "Male",
+      "row_count": 1000,
+      "slice_sha256": "15235cc76f24dd39bca4dfa362386ebc9ca970aca059a90ed475b9a3381ea27d",
+      "duplicate_rows": 2,
+      "confusion_counts": {
+        "": {
+          "tn": 17,
+          "fp": 3,
+          "fn": 3,
+          "tp": 2
+        },
+        "AfricanAmerican": {
+          "tn": 98,
+          "fp": 41,
+          "fn": 8,
+          "tp": 12
+        },
+        "Asian": {
+          "tn": 6,
+          "fp": 1,
+          "fn": 1,
+          "tp": 1
+        },
+        "Caucasian": {
+          "tn": 555,
+          "fp": 133,
+          "fn": 42,
+          "tp": 35
+        },
+        "Hispanic": {
+          "tn": 20,
+          "fp": 2,
+          "fn": 0,
+          "tp": 1
+        },
+        "Other": {
+          "tn": 14,
+          "fp": 1,
+          "fn": 3,
+          "tp": 1
+        }
+      }
+    }
+  ],
+  "hash_format": "Source UTF-8 bytes with CRLF normalized to LF; slice pandas CSV with LF line terminators."
+}

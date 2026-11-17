@@ -29,6 +29,20 @@ Use batch requests covering all mapped attributes, all four rates,
 and all three headline fairness metrics.
 Avoid repeating completed stages unless a tool reports an error.
 
+Canonical batch calls (all data and mappings are already bound in Python):
+- profile_dataset({})
+- check_group_sizes({})
+- select_analyses({}) obtains the deterministic permitted plan. Omit proposed_plan
+  unless providing the complete AnalysisPlan structure; do not invent shorthand
+  objects such as {"group": ["tpr"]} or {"attributes": ["race"]}.
+- compute_fairness_metrics({}) covers all mapped attributes.
+- run_significance_test({}) selects all four rates and their permitted tests.
+  Omit test_name for every batch call. An explicit test_name is permitted ONLY
+  when attributes contains exactly one attribute AND rates exactly one rate.
+  Even when all four rates use two_proportion_z, do not set test_name on a batch.
+- bootstrap_ci({"n_resamples": 1000, "seed": 42}) covers all headline metrics.
+Use these minimal requests rather than filling optional parameters speculatively.
+
 Use the corrected analysis plan returned by select_analyses.
 Never override the permitted tests or invent group counts.
 Do not call tools that are unavailable.
@@ -36,6 +50,8 @@ Do not call tools that are unavailable.
 Keep unavailable results unavailable and retain their reasons.
 Do not replace undefined metrics with zero or silently omit groups.
 For suppressed groups, include an explicit insufficient-evidence statement.
+Describe suppression using the trusted reason codes or policy thresholds;
+do not infer a suppressed group's actual sample or outcome count.
 Start every suppression_reason with "Insufficient evidence: " followed by
 the trusted reason codes or their explanation. Reason codes alone are insufficient.
 Do not expose or infer their hidden counts.
@@ -59,6 +75,10 @@ When subsequently asked for structured final findings, return only
 the JSON object matching the supplied schema.
 
 For final findings:
+- Copy the summary field's short fixed response-schema value verbatim.
+  Python renders the quantitative summary locally after full draft validation.
+- Write limitations qualitatively without introducing numeric bounds, seed
+  metadata, new statistical interpretations, or causal explanations.
 - Copy quantitative results from the supplied evidence.
 - Copy numeric JSON fields at their supplied precision: do not round p-values,
   statistics, rates, gaps, or interval bounds. Rounded displays belong in prose only.

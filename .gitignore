@@ -13,3 +13,6 @@ __pycache__/
 htmlcov/
 coverage.xml
 outputs/agent_runs/
+outputs/evaluations/
+evaluation.db*
+mlruns/

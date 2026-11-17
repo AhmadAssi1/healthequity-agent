@@ -64,7 +64,8 @@ _NEGATED_PREFIX = re.compile(
 _INSUFFICIENCY = re.compile(
     r"\s+(?:both\s+)?(?:insufficient (?:evidence|data|sample|size|count|positive|group)|too few |"
     r"below_min_|(?:small|low) (?:sample|group|count|size|positive)|missing (?:score|data)|"
-    r"undefined (?:rate|metric)|minimum (?:size|count|group))",
+    r"undefined (?:rate|metric)|minimum (?:size|count|group)|"
+    r"(?:having\s+)?fewer than \d+\s+(?:total\s+)?(?:samples?|rows?|members?|positive outcomes?)\b)",
     re.IGNORECASE,
 )
 _DISPARITY_CONTEXT = re.compile(
@@ -109,6 +110,12 @@ def check_group_mentions(text: str, groups: dict[str, list], path: str) -> tuple
         except (ValueError, SyntaxError):
             issue("Invalid group-reference string; use JSON-quoted labels.")
             spans.append(match.span())
+            continue
+        if attribute.casefold() in {"group", "groups"} and attribute not in groups:
+            # A natural-language list (groups: "A", "B") is not an attribute
+            # named "groups". Leave its labels for the quoted-name pass, which
+            # still rejects unknown or ambiguous categories. Real mapped column
+            # names take precedence over this prose interpretation.
             continue
         if attribute in _IDENTIFIERS and attribute not in groups:
             continue  # A metric annotation, still subject to numeric checks.

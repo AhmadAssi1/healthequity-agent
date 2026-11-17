@@ -299,7 +299,7 @@ Check dependency compatibility:
 python -m pip check
 ```
 
-The latest confirmed full local run passed **1,083 tests**. Provider/orchestration
+The latest confirmed full local run passed **1,162 tests**. Provider/orchestration
 tests use scripted responses or injected clients; the standard test suite makes
 no live OpenAI calls. Live CLI benchmarks are separate paid runs.
 
@@ -321,6 +321,7 @@ python -m pre_commit run --all-files
   claims validation, summary grounding, data helpers, and the Streamlit placeholder.
 - `healthequity/`: CSV audit CLI, artifact persistence, and offline saved-run review.
 - `fairness/`: Deterministic metrics, statistics, policies, and scenario generation.
+- `evals/`: Twelve known-answer scenarios, offline/live runner, and failure-sensitive scorecards.
 - `config.yaml`: Group eligibility and severity thresholds.
 - `data/`: Source dataset, identifier mappings, and the demo audit sample.
 - `docs/`: Scope, data/model cards, implementation decisions, and methodology.
@@ -342,6 +343,9 @@ python -m pre_commit run --all-files
 - [CLI](docs/cli.md)
 - [Agent Protocol](docs/agent-protocol.md)
 - [Live Verification Record](docs/week3-agent-verification.md)
+- [Week 4 Evaluation Scenarios](docs/week4-evaluation-scenarios.md)
+- [Week 4 Evaluation Runner](docs/week4-evaluation.md)
+- [Evaluation Automation and MLflow Tracking](docs/evaluation-tracking.md)
 - [Implementation Decisions - baseline review](docs/implementation-decisions.md)
 
 ## Data Source
