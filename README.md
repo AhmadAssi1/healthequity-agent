@@ -5,12 +5,13 @@ de-identified healthcare data. The working CLI combines a guarded OpenAI agent
 with deterministic Python tools and saves validated findings and execution traces.
 
 The demonstration use case is 30-day hospital readmission prediction on the UCI
-Diabetes 130-US Hospitals dataset. PDF reporting, the full web application, and
-drift monitoring are planned deliverables.
+Diabetes 130-US Hospitals dataset. PDF reporting includes a reusable management
+template for supplied binary tasks. The full web application and drift monitoring
+remain planned deliverables.
 
 ## Current Status
 
-Updated November 12, 2026.
+Updated November 19, 2026.
 
 | Component | Status |
 |---|---|
@@ -21,8 +22,9 @@ Updated November 12, 2026.
 | Claims validation | Structured quantities checked against evidence; controlled English screening; one claim rewrite before a hard stop |
 | Quantitative summary | Rendered from trusted tool evidence and policy; original model draft and grounding verdict retained in the trace |
 | CSV CLI | Custom mappings, automatic artifact saving, failure records, and offline review of saved runs |
+| PDF reporting | Phone-readable management PDF with section bookmarks, labelled subgroup rates, TPR/FPR charts, and a responsive HTML companion |
 | Web interface | Streamlit placeholder |
-| Planned product work | Twelve-scenario evaluation harness, PDF reports, upload UI, Docker/deployment, audit monitoring and white-label configuration |
+| Planned product work | Upload UI, Docker/deployment, audit monitoring and white-label configuration; see evaluation docs for implemented offline/live evaluation tooling |
 
 The selected provider is **OpenAI**, using `gpt-4.1-mini` in the recorded live
 runs; the original brief names Gemini. The provider/model configuration remains
@@ -37,7 +39,7 @@ Python. Standalone drafting and PDF rendering retain injectable backend interfac
 
 | Evidence | Confirmed result |
 |---|---|
-| Full local test suite | **1,083 tests passed** |
+| Current local test checks | **1,207 passed**; one MLflow/SQLAlchemy integration test blocked by Windows application control (excluded from the passing rerun) |
 | Linting | Ruff passed |
 | Consecutive live demo batch | **5/5 completed**, each auditing 14,998 rows across race, gender, age and payer_code |
 | Batch total latency | **44.354-66.574 seconds**, mean **51.363 seconds** |
@@ -299,7 +301,10 @@ Check dependency compatibility:
 python -m pip check
 ```
 
-The latest confirmed full local run passed **1,170 tests**. Provider/orchestration
+The November 17 full local run passed **1,187 tests**. On November 19, **1,207 tests
+passed** with one MLflow/SQLAlchemy integration test excluded after Windows
+application control blocked its compiled extension; this is not an all-tests pass.
+The report/CLI checks passed all **57 tests**. Provider/orchestration
 tests use scripted responses or injected clients; the standard test suite makes
 no live OpenAI calls. Live CLI benchmarks are separate paid runs.
 
@@ -346,6 +351,7 @@ python -m pre_commit run --all-files
 - [Week 4 Evaluation Scenarios](docs/week4-evaluation-scenarios.md)
 - [Week 4 Evaluation Runner](docs/week4-evaluation.md)
 - [Evaluation Automation and MLflow Tracking](docs/evaluation-tracking.md)
+- [Draft PDF Reporting](docs/pdf-reporting.md)
 - [Implementation Decisions - baseline review](docs/implementation-decisions.md)
 
 ## Data Source

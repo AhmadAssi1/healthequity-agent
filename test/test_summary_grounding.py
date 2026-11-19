@@ -6,12 +6,16 @@ import pandas as pd
 import pytest
 import test_agent as helpers
 
+from app.agent import AuditAgent
 from app.agent_errors import AgentRunError
 from app.audit_schemas import AuditFindings
 from app.claims_validation import validate_claims
+from app.llm_config import LLMConfig
 from app.schemas import ColumnMapping
 from app.summary_grounding import SUMMARY_PLACEHOLDER, ground_summary, render_summary
 from app.tools import AuditToolSession
+from evals.offline_provider import OfflineProvider
+from evals.scenarios import build_scenarios
 from fairness.policy import SuppressionPolicy
 
 
@@ -51,6 +55,7 @@ def test_renderer_produces_same_summary_without_a_model_draft(grounding_case):
     findings, evidence = grounding_case
     grounded, _ = ground_summary(findings, evidence)
     assert render_summary(evidence) == grounded.summary
+    assert grounded.summary.startswith("This audit covers 200 rows and 1 mapped attribute.")
     assert validate_claims(findings.model_copy(update={"summary": render_summary(evidence)}), evidence).passed
 
 
@@ -118,6 +123,47 @@ def test_summary_copies_test_results_without_inventing_significance(grounding_ca
         assert f"with p={test.p_value!r}" in grounded.summary
     assert "all rates are significant" not in grounded.summary
     assert "No combined equalized-odds p-value is reported." in grounded.summary
+
+
+@pytest.mark.parametrize(("scenario", "draft_text", "expected_text"), [
+    (
+        "tiny_group",
+        "Confidence intervals for fairness metrics include zero.",
+        "Some reported percentile intervals have positive lower bounds even when the observed gap is zero.",
+    ),
+    (
+        "multiple_groups",
+        'The rate tests show statistically significant disparities for group "C".',
+        "Identifying a statistically significant pair would require a post-hoc comparison.",
+    ),
+])
+def test_agent_renders_limitations_from_evidence(scenario, draft_text, expected_text):
+    case = next(case for case in build_scenarios() if case.name == scenario)
+    session = AuditToolSession(
+        case.data, case.mapping,
+        suppression_policy=SuppressionPolicy(**case.expected["policy"]),
+    )
+
+    class ProviderWithLegacyProse(OfflineProvider):
+        def generate(self, **kwargs):
+            response = super().generate(**kwargs)
+            if response.structured_output is not None:
+                response.structured_output["limitations"] = [draft_text]
+            return response
+
+    provider = ProviderWithLegacyProse(session)
+    result = AuditAgent(
+        provider=provider, session=session,
+        llm_config=LLMConfig(model_name=provider.model_name),
+    ).run()
+    draft = AuditFindings.model_validate(result.trace.turns[-1].response.structured_output)
+    assert draft.limitations == [draft_text]
+    assert draft_text not in result.findings.limitations
+    assert expected_text in " ".join(result.findings.limitations)
+    assert result.findings.limitations == result.trace.summary_grounding.grounded_limitations
+    excluded = {"summary", "limitations"}
+    assert result.findings.model_dump(exclude=excluded) == draft.model_dump(exclude=excluded)
+    assert result.claims_validation.passed
 
 
 def test_summary_records_unavailable_results_and_suppression_explicitly():

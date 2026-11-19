@@ -234,3 +234,38 @@ oracle. No unrestricted unsupported-claim rate is certified. Human narrative
 review and dollar-cost configuration remain pending; the saved benchmark gate
 therefore remains open. This is one twelve-case live batch, not a general
 reliability guarantee. Earlier failed batches remain unchanged.
+
+The November 19 follow-up verified revised English text against all ten local
+reports and all ten reports from the GitHub live job. The review records the
+incorrect interval and pairwise interpretations in the original local batch.
+[Narrative review and evidence](reviews/week4-narrative-review.md)
+
+## Evidence-based limitations
+
+The live drafting schema now accepts one fixed limitations item. After the full
+draft passes validation, the agent builds final limitations from the audit methods
+and saved tool results. It checks the published findings again and records the
+rendered limitations alongside the grounded summary in the trace.
+
+`tiny_group` covers zero observed gaps with positive lower bootstrap bounds.
+`multiple_groups` covers omnibus rate tests that compare the eligible groups
+jointly. The regression cases inject the original types of interpretation errors
+and check the published findings against the recorded evidence.
+
+The offline suite `060b431d41eb435688c6183975f59bd9` completed ten valid audits
+and correctly refused both invalid inputs. All scoped numeric, tool selection,
+schema, suppression, and automated claims checks passed. The renderer also
+passed revalidation using ten saved live drafts from each of the two reviewed
+batches. The full local test suite passed all 1,210 tests.
+
+The November 19 live evaluation then completed ten audits and correctly
+refused both invalid inputs. All 176 fixture-backed numeric checks passed.
+Ahmad Assi approved the evidence review on November 19, 2026. It found zero
+unsupported claims across the ten final reports, satisfying the Week 4 live
+evaluation benchmark.
+[Approved live evaluation scorecard](reviews/week4-live-review-20261119.md)
+
+The compact readmission PDF rendered in 1.803 seconds. Its visual presentation
+was checked at simulated phone and laptop sizes, and Ahmad Assi approved the
+delivered edition on November 19, 2026.
+[Mobile report review](reviews/mobile-report-review-20261119.md)

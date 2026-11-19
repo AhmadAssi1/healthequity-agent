@@ -70,9 +70,13 @@ class OfflineProvider:
         text = None
         if kwargs["response_schema"] is not None:
             structured = draft_from_tools(self.session)
-            allowed_summary = kwargs["response_schema"]["properties"]["summary"].get("enum")
+            properties = kwargs["response_schema"]["properties"]
+            allowed_summary = properties["summary"].get("enum")
             if allowed_summary:
                 structured["summary"] = allowed_summary[0]
+            allowed_limitations = properties["limitations"]["items"].get("enum")
+            if allowed_limitations:
+                structured["limitations"] = [allowed_limitations[0]]
         elif self.step < len(STAGES):
             calls = [ToolCall(call_id=f"offline_{self.step}", name=STAGES[self.step], arguments={})]
             self.step += 1

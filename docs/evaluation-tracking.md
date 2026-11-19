@@ -125,3 +125,50 @@ round trips, and independence from pandas CSV serialization or real-data
 resampling. Local validation: 69 evaluation tests passed; full suite 1,170 passed
 in 19.98 seconds; Ruff clean. Linux/GitHub verification of the fix still requires
 a new pushed commit. The failed GitHub runs remain part of the record.
+
+## Verified GitHub success after portability fix
+
+On commit `74adf238e3d88bb429387bd6060327049a78f6cd`, the following
+GitHub-hosted runs completed successfully on November 17, 2026:
+
+- CI run `44064595417`.
+- Agent evaluation run `44064595229`: both deterministic and live jobs passed,
+  including the schema probe, MLflow export, summaries, and artifact upload.
+- Live results: ten valid audits completed and both invalid inputs were refused.
+  Executable tool selection, scoped fixture numeric accuracy, schema validity,
+  suppression correctness, refusal correctness, and automated final claims
+  validation all reported 100% for this batch.
+- The live job recorded MLflow parent run
+  `6f6466b832484f188287d34f5050bd5a` and uploaded artifact
+  `live-evaluation-44064595229-1` (artifact ID `14319034889`).
+- Valid-case durations ranged from 13.060 to 26.465 seconds. This evidence is
+  from the GitHub job logs and summary, independently of the earlier local run.
+
+The November 19 editorial review checked the ten GitHub reports against the
+saved trace evidence. The review records proposed corrections for that batch.
+[Narrative review](reviews/week4-narrative-review.md)
+
+## Estimated cost of the saved live evaluations
+
+The November 19 estimate uses the recorded token counts and the published
+GPT-4.1 mini rates of $0.40 per million input tokens and $1.60 per million
+output tokens. The traces record total input tokens without a cached-token
+breakdown, so the estimate prices all input at the standard rate.
+[OpenAI model pricing](https://developers.openai.com/api/docs/models/gpt-4.1-mini)
+
+| Live batch | Input tokens | Output tokens | Estimated USD | USD per completed audit |
+|---|---:|---:|---:|---:|
+| Local `5bb6b88b848640f7b4e106a61d820389` | 253,960 | 8,923 | 0.115861 | 0.011586 |
+| GitHub `d18f1c34eeba4d92b4c234363fa81ff0` | 270,348 | 10,748 | 0.125336 | 0.012534 |
+| Local `24b01ac4df4c43f982bbd1fa1b54cf17` | 246,365 | 7,912 | 0.111205 | 0.011121 |
+
+Each batch completed ten audits. Its two input refusals used zero provider
+calls. The estimates cover the evaluation calls recorded in each scorecard.
+
+The November 19 local batch recorded its prices during execution. The MLflow
+database confirms that parent run `17ea70bda6fa44fc8cd981c10a1abf82` and its
+12 children finished in `agent-evals`. Ahmad Assi approved this batch on
+November 19, 2026. The parent run records `evaluation.human_review=approved`
+and `live_benchmark_passed=1`. Its `review/` artifacts contain the approved
+scorecard in Markdown and JSON.
+[Approved live evaluation scorecard](reviews/week4-live-review-20261119.md)

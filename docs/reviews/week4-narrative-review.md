@@ -1,14 +1,15 @@
 # Week 4 Narrative Review
 
-Review date: November 17, 2026.
-Source evaluation batch: `5bb6b88b848640f7b4e106a61d820389`.
+The November 19 live run evaluated the agent after the limitations change.
+[Review of the final live reports](week4-live-review-20261119.md)
 
-All ten reports were reviewed for consistency between summaries, limitations,
-warnings, group eligibility, metrics, confidence intervals, and rate-test results.
-This is an AI-assisted editorial and evidence review. No human approval is
-attributed to Ahmad. Original findings, traces, and scorecards remain unchanged.
+The November 17 local review covered batch `5bb6b88b848640f7b4e106a61d820389`.
+The November 19 follow-up checked the revised text against that batch and
+compared all ten GitHub live reports with their saved evidence. Both reviews
+cover summaries, limitations, warnings, group eligibility, confidence
+intervals, and rate tests. Human approval of the revised text is pending.
 
-## Review results
+## Local live narrative review
 
 | Scenario | Assessment | Main finding |
 |---|---|---|
@@ -27,49 +28,68 @@ attributed to Ahmad. Original findings, traces, and scorecards remain unchanged.
 
 ### tiny_group
 
-The original limitation states that the confidence intervals include zero.
-However, the EOD interval has a lower bound of `0.01610770339643733`, and
-the PPV interval has a lower bound of `0.0020707819418089753`.
-Only the demographic-parity interval includes zero. Suggested replacement:
+The local text incorrectly states that all intervals include zero. The
+observed headline gaps are all zero and the four component tests each return
+`p = 1.0`. The interval bounds below match both saved live batches.
 
-> The demographic-parity bootstrap interval includes zero; the equalized-odds
-> and PPV intervals have positive lower bounds. They must not be described
-> collectively as including zero or substituted for the component rate tests.
+| Gap | Observed (pp) | 95% bootstrap interval (pp) |
+|---|---:|---:|
+| Demographic parity | 0.00 | 0.00 to 10.51 |
+| Equalized odds | 0.00 | 1.61 to 18.01 |
+| Predictive parity (PPV) | 0.00 | 0.21 to 16.12 |
+
+> The demographic parity bootstrap interval includes zero. The equalized odds
+> and PPV intervals have positive lower bounds. Interpret each interval
+> separately from the component rate tests.
 
 ### multiple_groups
 
-The original text states that the demographic-parity interval includes zero,
-but its lower bound is `0.010000000000000009`. That statement is incorrect.
-It also attributes significant differences to group C, although the chi-square
-tests compare all three groups jointly. No post-hoc pairwise tests were run.
-Suggested replacement:
+The local text incorrectly states that the demographic parity interval includes
+zero and attributes significance to group C. In both live batches, the observed
+demographic parity gap is `0.00 pp`, its 95% bootstrap interval is `1.00 to 13.01 pp`,
+and the selection-rate chi-square test returns `p = 1.0`. The other three tests
+each return `p ≈ 0.00438` before any adjustment for multiple comparisons.
 
-> The TPR, FPR and PPV chi-square tests are omnibus comparisons across the
-> three groups. They do not establish which pair differs significantly;
-> no post-hoc pairwise tests were performed.
+> The TPR, FPR and PPV chi-square tests compare rates jointly across the three
+> groups. Identifying a statistically significant pair would require a post-hoc
+> comparison.
 
-Some nonnegative-gap percentile bootstrap intervals have positive lower bounds
-even when the observed gap is zero. This requires careful methodological
-interpretation. This review does not independently establish interval coverage,
-change the resampling algorithm, or recompute the audit. The intervals must not
-be treated automatically as substitutes for the recorded component rate tests.
+Percentile bootstrap intervals for nonnegative maximum gaps can have positive
+lower bounds even when the observed gap is zero. Interpret them alongside the
+component rate tests under the documented resampling method.
+[Methodology](../methodology.md)
 
-## Proposed revisions and approval status
+## GitHub live narrative review
 
-[Proposed report revisions](week4-narratives-20261117.json) contains the findings,
-a lightly edited summary, and a complete replacement limitations list for each
-report. Summary edits correct singular grammar and the wording used when no
-groups were suppressed; numerical values remain unchanged. Each source report
-has a recorded SHA-256 hash identifying the exact version reviewed.
+The live job produced batch `d18f1c34eeba4d92b4c234363fa81ff0` in artifact
+`14319034889`. Its `tiny_group` and `multiple_groups` prose avoided the specific
+interval and pairwise claims found in the local batch. The review identified
+the following edits. [GitHub Actions run](https://github.com/AhmadAssi1/healthequity-agent/actions/runs/44064595229)
 
-Warnings match the recorded profiler outputs. However, repeated combinations
-in mapped columns alone do not establish duplicate source encounters. The
-proposed limitations clarify this distinction. The duplicated_rows fixture is
-an exception because full-row duplication is known by construction.
+| Scenario | Review finding |
+|---|---|
+| `no_gap` | Report interval width without attributing it to sample size alone. The fixture had no formal power analysis. |
+| `selection_gap` | The label-based tests use observed outcomes and binary predictions. The constructed scores support the AUROC calculation. |
+| `tpr_gap` | Each z-test met the expected-cell-count rule. Independence is a sampling assumption. |
+| `ppv_gap` | The profiler checked mapped inputs. Its warning list provides limited evidence about data quality. |
+| `tiny_group` | Specify the two suppression reasons. `Tiny` is below the group size threshold and `LowPositive` is below the positive-outcome threshold. |
+| `multiple_groups` | State that the chi-square tests are joint comparisons across three groups. |
+| `missing_score` | Describe repeated mapped combinations and the absence of scores. Keep the zero observed gaps, rate tests, and reporting labels distinct. |
+| `duplicated_rows` | The fixture deliberately repeats complete rows. Dependence between the copies can affect the uncertainty estimate. |
+| `diabetes_female` | Describe the repeated mapped combinations and report the positive lower interval bounds separately from the nonsignificant rate tests. |
+| `diabetes_male` | Apply the substantial label using both the observed gap threshold and the lower interval bound. Report selection-rate and FPR test results separately. |
 
-The original reports cannot be certified as having zero unsupported narrative
-claims after the two interpretation errors identified above. Automated batch
-results remain recorded, while human narrative approval remains pending.
-Proposed revisions do not establish clinical suitability, legal compliance, or
-approval of future reports. No additional paid API requests were made for this
-review.
+## Verification and approval
+
+The revised English summaries and limitations passed the findings schema and
+claims validator for all ten completed reports in each source batch. The
+quantitative summaries match the saved evidence after grammar edits. The
+replacement text preserves the structured metrics, suppression results, and
+profiler warnings. The two invalid inputs were correctly refused before any
+provider request in each batch.
+[English revisions and source hashes](week4-narratives-20261117.json)
+
+The original local reports contain the errors documented above. This follow-up
+used the saved artifacts and fixture definitions. On November 19, Ahmad Assi
+approved a new live batch after the corrections were implemented.
+[Approved live evaluation scorecard](week4-live-review-20261119.md)

@@ -112,6 +112,7 @@ class SeverityCorrection(AuditBaseModel):
 class SummaryGroundingRecord(AuditBaseModel):
     proposed_summary: str = Field(min_length=1, pattern=r"\S")
     grounded_summary: str = Field(min_length=1, pattern=r"\S")
+    grounded_limitations: list[str] | None = Field(default=None, min_length=1)
     source: Literal["trusted_tool_evidence"] = "trusted_tool_evidence"
     validation: ClaimsValidationOutput
 
@@ -144,7 +145,7 @@ class AgentRunTrace(AuditBaseModel):
     @model_validator(mode="after")
     def validate_run(self):
         if self.status == "completed" and self.summary_grounding is not None and not self.summary_grounding.validation.passed:
-            raise ValueError("A completed audit requires its grounded summary to pass validation.")
+            raise ValueError("A completed audit requires its grounded narrative to pass validation.")
         if self.claims_validation_attempts:
             if self.claims_validation != self.claims_validation_attempts[-1]:
                 raise ValueError("The final claims verdict must match the last recorded attempt.")
@@ -211,8 +212,12 @@ class AgentRunResult(AuditBaseModel):
 
     @model_validator(mode="after")
     def validate_completed_run(self):
-        if self.trace.summary_grounding is not None and self.trace.summary_grounding.validation != self.claims_validation:
-            raise ValueError("The final verdict must match grounded-summary validation.")
+        grounding = self.trace.summary_grounding
+        if grounding is not None:
+            if grounding.validation != self.claims_validation:
+                raise ValueError("The final verdict must match grounded narrative validation.")
+            if grounding.grounded_limitations is not None and grounding.grounded_limitations != self.findings.limitations:
+                raise ValueError("The final limitations must match the grounded text in the trace.")
         if self.claims_validation is not None and not self.claims_validation.passed:
             raise ValueError("A successful run cannot have a failed claims verdict.")
         if self.trace.claims_validation is not None and self.claims_validation != self.trace.claims_validation:

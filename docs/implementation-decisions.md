@@ -70,6 +70,10 @@ been delivered or that an external reviewer has approved the change.
 
 ## Remaining product work
 
+Historical note: the list below describes the Week 2 baseline. Subsequent agent,
+CLI, evaluation, and draft PDF work is documented in the README and
+[PDF reporting](pdf-reporting.md). It is not a current implementation checklist.
+
 The guarded agent, reusable audit orchestration and structured tool wrappers,
 claims validator, full 12-scenario agent evaluation harness, PDF reporting, full
 UI and upload flow, deployment, monitoring, white-label configuration, and CLI

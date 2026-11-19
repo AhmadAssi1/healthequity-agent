@@ -16,3 +16,5 @@ outputs/agent_runs/
 outputs/evaluations/
 evaluation.db*
 mlruns/
+output/pdf/
+tmp/pdfs/

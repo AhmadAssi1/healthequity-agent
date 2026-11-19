@@ -19,7 +19,7 @@ from app.data import load_data
 from app.llm_config import load_llm_config
 from app.openai_provider import OpenAIProvider
 from app.schemas import ColumnMapping
-from app.tools import AuditToolSession
+from app.tools import AuditToolSession, ToolBackends
 from app.validation import create_dataset_fingerprint, validate_dataset
 
 DEFAULT_GROUPS = ("race", "gender", "age", "payer_code")
@@ -53,6 +53,8 @@ def _parser() -> argparse.ArgumentParser:
     score.add_argument("--no-score", action="store_true", help="Ignore any risk-score column.")
     audit.add_argument("--output-dir", type=Path, default=Path("outputs/agent_runs"))
     audit.add_argument("--max-seconds", type=float, default=180.0, help="Agent budget, up to 180 seconds.")
+    audit.add_argument("--pdf", action="store_true", help="Render a draft PDF after validated audit completion.")
+    audit.add_argument("--model-metadata", type=Path, help="Optional model provenance JSON for --pdf.")
     return parser
 
 
@@ -85,7 +87,25 @@ def _audit(args) -> int:
         mapping = ColumnMapping(outcome=args.outcome, prediction=args.prediction, groups=groups, score=score)
         validate_dataset(frame, mapping)
         config = AgentConfig(max_duration_seconds=args.max_seconds)
-        session = AuditToolSession(frame, mapping)
+        model_metadata = None
+        if getattr(args, "model_metadata", None) is not None:
+            if not getattr(args, "pdf", False):
+                raise ValueError("--model-metadata requires --pdf.")
+            model_metadata = json.loads(args.model_metadata.read_text(encoding="utf-8"))
+            if not isinstance(model_metadata, dict) or model_metadata.get("row_count") != len(frame):
+                raise ValueError("Model provenance row count must match the input.")
+            from app.management_reporting import validate_report_metadata
+            validate_report_metadata(model_metadata, len(frame), mapping.groups)
+        backends = None
+        if getattr(args, "pdf", False):
+            import reportlab  # noqa: F401
+
+            from app.reporting import render_report
+            backends = ToolBackends(render_report=lambda findings: render_report(
+                findings, session.get_evidence(), directory / "audit.pdf",
+                run_id=directory.name, trace_id=record["trace_id"], model_metadata=model_metadata,
+            ))
+        session = AuditToolSession(frame, mapping, backends=backends)
         record.update(mapping=mapping.model_dump(), fingerprint=create_dataset_fingerprint(frame).model_dump())
     except ValidationError:
         finish("failed", "Invalid column mapping or agent budget; check --help and column names.")
@@ -135,6 +155,19 @@ def _audit(args) -> int:
     if result.claims_validation is not None:
         _write_json(directory / "claims_validation.json", result.claims_validation.model_dump(mode="json"))
     finish("completed")
+    if getattr(args, "pdf", False):
+        report_started = perf_counter()
+        try:
+            receipt = session.invoke("render_report", {})
+            record.update(report_status="draft", report_pdf=receipt.pdf_path,
+                          report_seconds=round(perf_counter() - report_started, 3))
+            _write_json(directory / "run.json", record)
+            print(f"Draft PDF: {receipt.pdf_path}")
+        except Exception as error:  # noqa: BLE001
+            record.update(report_status="failed", report_error_type=type(error).__name__)
+            _write_json(directory / "run.json", record)
+            print(f"Audit completed; PDF rendering failed ({type(error).__name__}). Saved evidence is retained.", file=sys.stderr)
+            return 3
     print(f"Status: completed\nElapsed seconds: {record['elapsed_seconds']}")
     print(f"Model turns: {len(result.trace.turns)}")
     print(f"Tool calls: {sum(len(t.tool_executions) for t in result.trace.turns)}")

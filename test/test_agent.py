@@ -613,6 +613,7 @@ def test_final_schema_is_bound_to_all_mapped_attributes_with_specific_repair_fee
     result = agent_for(session, provider).run()
     assert provider.final_count == 2
     assert {a.attribute for a in result.findings.attributes} == {"group", "other"}
+    assert result.findings.summary.startswith("This audit covers 8 rows and 2 mapped attributes.")
     schema = provider.requests[-1]["response_schema"]
     assert schema["properties"]["attributes"]["minItems"] == 2
     assert schema["properties"]["attributes"]["maxItems"] == 2

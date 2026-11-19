@@ -7,7 +7,7 @@ import pytest
 from openai import BadRequestError
 
 from app.llm_config import LLMConfig
-from app.summary_grounding import SUMMARY_PLACEHOLDER
+from app.summary_grounding import LIMITATIONS_PLACEHOLDER, SUMMARY_PLACEHOLDER
 from evals.probe import probe_schema, safe_bad_request_message
 
 
@@ -22,6 +22,12 @@ def test_probe_uses_exact_runtime_schema_in_one_capped_request(status):
     assert request["max_output_tokens"] == 16 and request["store"] is False
     schema = request["text"]["format"]["schema"]
     assert schema["properties"]["summary"] == {"type": "string", "enum": [SUMMARY_PLACEHOLDER]}
+    assert schema["properties"]["limitations"] == {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1,
+        "items": {"type": "string", "enum": [LIMITATIONS_PLACEHOLDER]},
+    }
     assert schema["$defs"]["AttributeFindings"]["properties"]["attribute"]["enum"] == ["group"]
     assert "tools" not in request
     assert "row_count" not in request["input"]

@@ -69,6 +69,35 @@ def test_cli_runs_actual_tools_and_persists_validated_artifacts(csv_file, tmp_pa
     assert not list(directory.glob("*.tmp"))
 
 
+def test_cli_pdf_uses_validated_render_tool(csv_file, tmp_path, offline):
+    root = tmp_path / "runs"
+    assert cli.main(["audit", str(csv_file), "--output-dir", str(root), "--pdf"]) == 0
+    directory, record = files_at(root)
+    assert record["status"] == "completed" and record["report_status"] == "draft"
+    assert (directory / "audit.pdf").read_bytes().startswith(b"%PDF")
+    assert record["report_seconds"] < 60
+
+
+def test_cli_pdf_failure_does_not_relabel_successful_audit(csv_file, tmp_path, offline, monkeypatch):
+    from app import reporting
+    def fail(*args, **kwargs):
+        raise OSError("render unavailable")
+    monkeypatch.setattr(reporting, "render_report", fail)
+    root = tmp_path / "runs"
+    assert cli.main(["audit", str(csv_file), "--output-dir", str(root), "--pdf"]) == 3
+    directory, record = files_at(root)
+    assert record["status"] == "completed" and record["report_status"] == "failed"
+    assert (directory / "findings.json").exists()
+
+
+def test_cli_rejects_nonbinary_task_metadata_before_provider_setup(csv_file, tmp_path, offline):
+    metadata = tmp_path / "metadata.json"
+    metadata.write_text(json.dumps({"row_count": 8, "task_type": "regression"}))
+    assert cli.main(["audit", str(csv_file), "--output-dir", str(tmp_path / "runs"), "--pdf",
+                     "--model-metadata", str(metadata)]) == 2
+    offline.assert_not_called()
+
+
 @pytest.mark.parametrize("problem", ["missing_file", "missing_outcome", "missing_prediction", "no_groups",
                                     "nonbinary", "duplicate_headers", "empty", "bad_budget", "xlsx"])
 def test_cli_refuses_bad_inputs_before_provider_setup(csv_file, tmp_path, offline, problem):

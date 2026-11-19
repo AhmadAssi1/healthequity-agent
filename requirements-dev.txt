@@ -3,3 +3,4 @@ ruff
 pytest
 pytest-cov
 pre-commit
+pypdf>=6,<7

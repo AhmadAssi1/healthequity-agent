@@ -75,10 +75,9 @@ When subsequently asked for structured final findings, return only
 the JSON object matching the supplied schema.
 
 For final findings:
-- Copy the summary field's short fixed response-schema value verbatim.
-  Python renders the quantitative summary locally after full draft validation.
-- Write limitations qualitatively without introducing numeric bounds, seed
-  metadata, new statistical interpretations, or causal explanations.
+- Copy the fixed summary string and the single permitted limitations item
+  from the response schema. Python renders both after full draft validation.
+- Copy warnings verbatim from the supplied profile.
 - Copy quantitative results from the supplied evidence.
 - Copy numeric JSON fields at their supplied precision: do not round p-values,
   statistics, rates, gaps, or interval bounds. Rounded displays belong in prose only.
@@ -88,11 +87,9 @@ For final findings:
 - Metric reason must be null whenever value is available.
 - Test reason must be null whenever method is not unavailable.
 - confidence_interval_reason must be null whenever the interval is available.
-- Reasons explain unavailable results only. Put interpretation in summary,
-  warnings, or limitations, never in an available result's reason field.
+- Reasons explain unavailable results only.
 - Use the supplied policy for severity.
 - Preserve suppressed groups and unavailable results.
-- State the analysis limitations.
 - If claim validation fails, rewrite once using its feedback and trusted evidence;
   preserve supported quantities and return the full corrected findings JSON.
 - Do not invent numbers, group names, tests, or evidence.

@@ -5,6 +5,17 @@
   "human_approval": "pending; no approval attributed to Ahmad",
   "benchmark_status": "open; original batch is not certified zero unsupported narrative claims",
   "original_artifacts_modified": false,
+  "verification": {
+    "date": "2026-11-19",
+    "local_scorecard_sha256": "a48802a30355f57893668c1123f7c2f9a5663252e55ca0ffbb5ab13150cdd303",
+    "github_workflow_run": 44064595229,
+    "github_artifact_id": 14319034889,
+    "github_source_run": "d18f1c34eeba4d92b4c234363fa81ff0",
+    "github_archive_sha256": "e40247e1b1d1ce57012bf418efa88a1400ff8524095ad086b2636a99d4ae479d",
+    "github_scorecard_sha256": "1a9a235bfdc442ecb5684fa6ddd0524f4a10afb19f053624d6021c75f56bdee2",
+    "candidate_reports_validated_per_source": 10,
+    "correct_refusals_per_source": 2
+  },
   "cases": [
     {
       "scenario": "no_gap",
@@ -89,11 +100,11 @@
       ],
       "proposed_summary": "This audit covers 480 rows and 1 mapped attribute.\n\nFor attribute \"group\", 2 reportable groups were analyzed; 2 suppressed groups have insufficient evidence. Demographic parity difference is 0.0; policy severity is no_evidence_found. Its 95% confidence interval is [0.0, 0.10512499999999993]. Equalized odds difference is 0.0; policy severity is no_evidence_found. Its 95% confidence interval is [0.01610770339643733, 0.18013437345211933]. PPV difference is 0.0; policy severity is no_evidence_found. Its 95% confidence interval is [0.0020707819418089753, 0.1612449697235334]. The selection_rate comparison uses two_proportion_z with p=1.0. The tpr comparison uses two_proportion_z with p=1.0. The fpr comparison uses two_proportion_z with p=1.0. The ppv comparison uses two_proportion_z with p=1.0.\n\nSeverity and statistical significance answer different questions. These results describe associations and do not establish causation, clinical suitability, or legal compliance. No combined equalized-odds p-value is reported. Human review remains required.",
       "proposed_limitations": [
-        "This synthetic fixture reports groups A and B only. Tiny and LowPositive are suppressed under the configured policy; no fairness conclusion is established for either suppressed group.",
-        "Observed headline gaps for reportable groups are zero, and the four component rate tests have p-values equal to one. This does not establish equivalence or prove fairness.",
-        "The demographic-parity bootstrap interval includes zero; the equalized-odds and PPV intervals have positive lower bounds. They must not be described collectively as including zero or substituted for the component rate tests.",
-        "The positive lower bounds for these nonnegative gap intervals require careful methodological interpretation, particularly when the observed gap is zero. This review does not independently certify interval coverage.",
-        "The results apply to this synthetic fixture only; AUROC values from artificially constructed scores do not establish clinical model performance."
+        "A and B meet the reporting thresholds in this synthetic fixture. Tiny is suppressed for group size and LowPositive is suppressed for positive-outcome count.",
+        "The observed headline gaps are zero, and each component rate test returns p=1.0. A claim of equivalence would require a separate analysis.",
+        "The demographic parity bootstrap interval includes zero. The equalized odds and PPV intervals have positive lower bounds. Interpret each interval separately from the component rate tests.",
+        "Percentile bootstrap intervals for these nonnegative gaps can have positive lower bounds even when the observed gap is zero. The intervals describe uncertainty under the implemented resampling scheme.",
+        "The findings describe the supplied group attribute and scores constructed for this synthetic fixture."
       ],
       "warnings_review": "Matches the recorded profiler output; repeated mapped combinations are not necessarily duplicate source encounters.",
       "original_artifact_modified": false
@@ -110,11 +121,11 @@
       ],
       "proposed_summary": "This audit covers 600 rows and 1 mapped attribute.\n\nFor attribute \"group\", 3 reportable groups were analyzed; No groups were suppressed. Demographic parity difference is 0.0; policy severity is no_evidence_found. Its 95% confidence interval is [0.010000000000000009, 0.13012499999999994]. Equalized odds difference is 0.2; policy severity is substantial. Its 95% confidence interval is [0.17343817132116005, 0.3645998251104566]. PPV difference is 0.19999999999999996; policy severity is substantial. Its 95% confidence interval is [0.11247313561143346, 0.3482932903010477]. The selection_rate comparison uses chi_square with p=1.0. The tpr comparison uses chi_square with p=0.00438369083343502. The fpr comparison uses chi_square with p=0.00438369083343502. The ppv comparison uses chi_square with p=0.00438369083343502.\n\nSeverity and statistical significance answer different questions. These results describe associations and do not establish causation, clinical suitability, or legal compliance. No combined equalized-odds p-value is reported. Human review remains required.",
       "proposed_limitations": [
-        "This synthetic fixture contains one attribute with three reportable groups; no groups were suppressed.",
-        "The TPR, FPR and PPV chi-square tests are omnibus comparisons across the three groups. They do not establish which pair differs significantly; no post-hoc pairwise tests were performed.",
-        "The observed demographic-parity gap is zero and the selection-rate test has p-value one, while the reported percentile bootstrap interval has a positive lower bound. It is incorrect to state that this interval includes zero.",
-        "Policy severity, component rate-test results, and bootstrap intervals answer different questions. No combined equalized-odds p-value is reported, and this review does not independently certify interval coverage.",
-        "Group C contributes to observed metric differences, but a group-specific significance claim requires additional evidence. Synthetic AUROC values were not subjected to between-group significance tests."
+        "All three groups meet the reporting thresholds in this synthetic fixture.",
+        "The TPR, FPR and PPV chi-square tests compare rates jointly across the three groups. Identifying a statistically significant pair would require a post-hoc comparison.",
+        "The observed demographic parity gap is zero and the selection-rate test returns p=1.0. The reported bootstrap interval has a positive lower bound of 0.01.",
+        "Equalized odds uses the larger of the TPR and FPR gaps. The corresponding rate tests provide separate p-values for TPR and FPR.",
+        "The results apply to the supplied synthetic groups and the implemented resampling scheme."
       ],
       "warnings_review": "Matches the recorded profiler output; repeated mapped combinations are not necessarily duplicate source encounters.",
       "original_artifact_modified": false

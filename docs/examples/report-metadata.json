@@ -1,0 +1,12 @@
+{
+  "row_count": 200,
+  "task_type": "binary_classification",
+  "task_name": "Equipment Failure Detection (Synthetic Demonstration)",
+  "model_name": "Synthetic demonstration classifier",
+  "positive_class": "equipment failure observed",
+  "observation_unit": "machine observations",
+  "decision_threshold": 0.5,
+  "group_display_names": {
+    "region": "Operating region"
+  }
+}
