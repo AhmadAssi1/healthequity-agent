@@ -1,27 +1,39 @@
-<!doctype html>
+{% if not embedded %}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }}</title>
+{% endif %}
 <style>
-:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#eaf0f4;color:#243747;font:15px/1.6 system-ui,sans-serif}
-main{max-width:1000px;margin:32px auto;padding:36px;background:white;border-radius:12px}header{border-top:6px solid #147d92;padding-top:24px}
-h1,h2,h3{color:#11394e;line-height:1.25}h1{font-size:34px}h2{margin-top:0}h3{font-size:17px;margin-bottom:12px}
-.brand{letter-spacing:2px;font-weight:700;font-size:13px;color:#31556a}.draft{color:#8b510c;font-weight:700}.notice{background:#fff5df;border-left:4px solid #bb7c18;padding:16px}
-section{padding:30px 0;border-bottom:1px solid #d5e1e7}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px;margin:18px 0}th,td{text-align:left;padding:10px;border-bottom:1px solid #dbe5eb;vertical-align:top;overflow-wrap:anywhere}th{background:#dcebf0}tr:nth-child(even){background:#f4f7f9}
-figure{margin:18px 0}img{max-width:100%;height:auto}figcaption{font-size:13px;color:#496273}footer{font-size:12px;color:#496273;padding:20px 0}li{margin:9px 0}
-.management figure{max-width:440px}
+{% if not embedded %}body{margin:0;background:#eaf0f4}{% endif %}
+.he-audit-report,.he-audit-report *{box-sizing:border-box}
+.he-audit-report{color-scheme:light;max-width:1000px;margin:32px auto;padding:36px;background:white;border-radius:12px;color:#243747;font:15px/1.6 system-ui,sans-serif;overflow-wrap:anywhere}
+.he-audit-report.embedded{margin:0 auto}
+.he-audit-report header{border-top:6px solid #147d92;padding-top:24px}
+.he-audit-report :is(h1,h2,h3){color:#11394e;line-height:1.25}
+.he-audit-report h1{font-size:34px}.he-audit-report h2{margin-top:0}.he-audit-report h3{font-size:17px;margin-bottom:12px}
+.he-audit-report .brand{letter-spacing:2px;font-weight:700;font-size:13px;color:#31556a}
+.he-audit-report .draft{color:#8b510c;font-weight:700}.he-audit-report .notice{background:#fff5df;border-left:4px solid #bb7c18;padding:16px}
+.he-audit-report section{padding:30px 0;border-bottom:1px solid #d5e1e7}
+.he-audit-report .table-wrap{overflow-x:auto}.he-audit-report table{width:100%;border-collapse:collapse;font-size:13px;margin:18px 0}
+.he-audit-report :is(th,td){text-align:left;padding:10px;border-bottom:1px solid #dbe5eb;vertical-align:top;overflow-wrap:anywhere}
+.he-audit-report th{background:#dcebf0}.he-audit-report tr:nth-child(even){background:#f4f7f9}
+.he-audit-report figure{margin:18px 0}.he-audit-report.management figure{max-width:440px}
+.he-audit-report img{max-width:100%;height:auto}.he-audit-report figcaption{font-size:13px;color:#496273}
+.he-audit-report footer{font-size:12px;color:#496273;padding:20px 0}.he-audit-report li{margin:9px 0}
 @media screen and (max-width:640px){
-  main{margin:0;padding:18px;border-radius:0}h1{font-size:27px}section{padding:22px 0}
-  .management table,.management tbody,.management tr,.management td{display:block}
-  .management table{font-size:15px}
-  .management thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-  .management tbody tr{padding:12px 0;border-top:1px solid #bbced5;background:transparent}
-  .management td{padding:2px 0;border:0;overflow-wrap:anywhere}
-  .management .records td{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1fr);gap:10px}
-  .management .records td::before{content:attr(data-label);color:#3e5662}
-  .management .records td:first-child,.management .pairs td:first-child{color:#155b6d;font-weight:700}
+  .he-audit-report{margin:0;padding:18px;border-radius:0}.he-audit-report.embedded{padding:12px}
+  .he-audit-report h1{font-size:27px}.he-audit-report section{padding:22px 0}
+  .he-audit-report.management :is(table,tbody,tr,td){display:block}
+  .he-audit-report.management table{font-size:15px}
+  .he-audit-report.management thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .he-audit-report.management tbody tr{padding:12px 0;border-top:1px solid #bbced5;background:transparent}
+  .he-audit-report.management td{padding:2px 0;border:0;overflow-wrap:anywhere}
+  .he-audit-report.management .records td{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1fr);gap:10px}
+  .he-audit-report.management .records td::before{content:attr(data-label);color:#3e5662}
+  .he-audit-report.management :is(.records,.pairs) td:first-child{color:#155b6d;font-weight:700}
 }
-@media print{body{background:white}main{margin:0;max-width:none;padding:0}section{break-before:page}table{min-width:0}header{border-top-width:3px}}
-</style></head><body><main{% if presentation_version %} class="management"{% endif %}>
+@media print{.he-audit-report{margin:0;max-width:none;padding:0}.he-audit-report section{break-before:page}.he-audit-report table{min-width:0}.he-audit-report header{border-top-width:3px}}
+</style>{% if not embedded %}</head><body>{% endif %}
+<main class="he-audit-report{% if presentation_version %} management{% endif %}{% if embedded %} embedded{% endif %}">
 <header>
   <div class="brand">HEALTHEQUITY AGENT</div><h1>{{ title }}</h1>
   {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
@@ -38,4 +50,4 @@ figure{margin:18px 0}img{max-width:100%;height:auto}figcaption{font-size:13px;co
 {% else %}<p>{{ block.text }}</p>{% endif %}
 {% endfor %}</section>{% endfor %}
 <footer>Run {{ run_id }} / Trace {{ trace_id }}. Display rounding does not change stored calculations.</footer>
-</main></body></html>
+</main>{% if not embedded %}</body></html>{% endif %}

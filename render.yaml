@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: healthequity-agent
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeployTrigger: checksPass
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: HEALTHEQUITY_LOCAL_ONLY
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"

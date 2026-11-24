@@ -79,8 +79,8 @@ For final findings:
   from the response schema. Python renders both after full draft validation.
 - Copy warnings verbatim from the supplied profile.
 - Copy quantitative results from the supplied evidence.
-- Copy numeric JSON fields at their supplied precision: do not round p-values,
-  statistics, rates, gaps, or interval bounds. Rounded displays belong in prose only.
+- Copy statistics, rates, gaps, and interval bounds at their supplied precision.
+  Return null for each p_value field. Python fills in the exact p-values from the tools.
 - Use digits for counts. For prose, prefer reported values over new bounds such
   as "all gaps below 1%" or "p < 0.001" unless that comparison is explicitly supplied.
 - Include every schema field, including required nullable fields.

@@ -4,21 +4,25 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import re
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Lock
 from xml.sax.saxutils import escape
 
 from app.audit_schemas import AuditFindings
 from app.claims_validation import validate_claims
+from app.demo_model import describe_demo_model
 from app.summary_grounding import ground_summary
 from app.tool_contracts import AuditEvidence, RenderReportOutput
 
 ROOT = Path(__file__).resolve().parents[1]
 METHODOLOGY = ROOT / "docs/methodology.md"
 TEMPLATE = Path(__file__).with_name("templates") / "audit_report.html.j2"
+_WEB_PDF_LOCK = Lock()
 METRIC_NAMES = {
     "demographic_parity_difference": "Demographic parity",
     "equalized_odds_difference": "Equalized odds",
@@ -640,8 +644,10 @@ def _write_pdf(context, output):
         from app.compact_pdf import write_compact_pdf
         write_compact_pdf(context, output)
         return
+    _write_a4_pdf(context, output)
 
-    # The earlier page-by-page editorial approvals apply to the A4 presentation.
+
+def _write_a4_pdf(context, output):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_LEFT
     from reportlab.lib.pagesizes import A4
@@ -685,7 +691,8 @@ def _write_pdf(context, output):
         def afterPage(self):
             page(self.canv, self)
 
-    document = ReportDocument(str(output), pagesize=A4, leftMargin=44, rightMargin=44,
+    target = str(output) if isinstance(output, Path) else output
+    document = ReportDocument(target, pagesize=A4, leftMargin=44, rightMargin=44,
                                  topMargin=53, bottomMargin=48,
                                  title=context["title"], author="HealthEquity Agent / Ahmad Assi")
 
@@ -734,8 +741,10 @@ def _write_pdf(context, output):
             elif kind == "table":
                 story.extend([table(block["rows"]), Spacer(1, 9)])
             elif kind == "chart":
-                image = Image(io.BytesIO(base64.b64decode(block["data"])), width=content_width,
-                              height=content_width * block.get("height_ratio", 2.5 / 7.2))
+                ratio = block.get("height_ratio", 2.5 / 7.2)
+                chart_width = min(content_width, 360 / ratio) if context.get("presentation_version") else content_width
+                image = Image(io.BytesIO(base64.b64decode(block["data"])), width=chart_width,
+                              height=chart_width * ratio)
                 story.append(KeepTogether([image, para(block["text"], "AuditSmall")]))
             else:
                 story.append(para(("- " if kind == "bullet" else "") + block["text"]))
@@ -764,14 +773,54 @@ def _write_pdf(context, output):
     document.build(story)
 
 
+def _apply_draft_presentation(context, findings, evidence, model_metadata):
+    from app.management_reporting import apply_management_presentation
+
+    apply_management_presentation(context, findings, evidence, model_metadata or {})
+
+
+def _render_report_html(context, *, embedded=False):
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    environment = Environment(loader=FileSystemLoader(str(TEMPLATE.parent)),
+                              autoescape=select_autoescape(default=True))
+    return environment.get_template(TEMPLATE.name).render(**context, embedded=embedded)
+
+
+def render_web_report(findings, evidence, *, run_id, trace_id, model_metadata=None, demo_training_rows=None):
+    """Build the responsive report and its A4 download from the same evidence."""
+    # Matplotlib uses shared state across concurrent Streamlit sessions.
+    with _WEB_PDF_LOCK, io.BytesIO() as output:
+        context = build_context(findings, evidence, run_id=run_id, trace_id=trace_id or "Unavailable",
+                                model_metadata=model_metadata)
+        context["review_banner"] = "DRAFT / HUMAN REVIEW PENDING"
+        _apply_draft_presentation(context, findings, evidence, model_metadata)
+        provenance = context["sections"][-1]["blocks"][0]["rows"]
+        for row in provenance:
+            if row[0] == "Renderer":
+                row[1] = "ReportLab (A4 PDF) and responsive HTML"
+        if trace_id is None:
+            from app.local_audit import LOCAL_AUDIT_LABEL
+
+            context["sections"][0]["blocks"].insert(0, {"kind": "p", "text": LOCAL_AUDIT_LABEL})
+        if demo_training_rows is not None:
+            description = describe_demo_model(demo_training_rows, findings.dataset.row_count)
+            context["sections"][0]["blocks"].insert(0, {"kind": "p", "text": description})
+        html = _render_report_html(context, embedded=True)
+        try:
+            _write_a4_pdf(context, output)
+        except Exception as error:  # noqa: BLE001 - keep the report readable if export fails.
+            logging.getLogger(__name__).warning("A4 export failed (%s)", type(error).__name__)
+            return None, html
+        return output.getvalue(), html
+
+
 def render_report(findings, evidence, output, *, run_id, trace_id, model_metadata=None,
                   methodology_path=METHODOLOGY, source_provenance=None, page_one_reviewed=False,
                   page_two_reviewed=False, page_three_reviewed=False, page_four_reviewed=False,
                   page_five_reviewed=False, page_six_reviewed=False, page_seven_reviewed=False,
                   review_complete=False):
     """Write PDF, responsive HTML and review/provenance JSON from one context."""
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-
     output = Path(output).resolve()
     if output.suffix.lower() != ".pdf":
         raise ValueError("PDF output must end in .pdf.")
@@ -784,8 +833,7 @@ def render_report(findings, evidence, output, *, run_id, trace_id, model_metadat
     context["review_banner"] = "DRAFT / HUMAN REVIEW PENDING"
     if not any((page_one_reviewed, page_two_reviewed, page_three_reviewed, page_four_reviewed,
                 page_five_reviewed, page_six_reviewed, page_seven_reviewed, review_complete)):
-        from app.management_reporting import apply_management_presentation
-        apply_management_presentation(context, findings, evidence, model_metadata or {})
+        _apply_draft_presentation(context, findings, evidence, model_metadata)
     if page_one_reviewed:
         _apply_page_one_review(context, findings, evidence, model_metadata or {})
     if page_two_reviewed:
@@ -817,9 +865,7 @@ def render_report(findings, evidence, output, *, run_id, trace_id, model_metadat
             raise ValueError("Completed approval requires the reviewed report edition.")
         _apply_final_review(context, evidence)
     output.parent.mkdir(parents=True, exist_ok=True)
-    environment = Environment(loader=FileSystemLoader(str(TEMPLATE.parent)),
-                              autoescape=select_autoescape(default=True))
-    html = environment.get_template(TEMPLATE.name).render(**context)
+    html = _render_report_html(context)
     with TemporaryDirectory(dir=output.parent) as staging_directory:
         staged_pdf = Path(staging_directory) / output.name
         _write_pdf(context, staged_pdf)

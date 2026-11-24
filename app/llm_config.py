@@ -8,12 +8,14 @@ from pydantic import Field
 
 from app.audit_schemas import AuditBaseModel
 
+DEFAULT_OPENAI_TIMEOUT_SECONDS = 60.0
+
 
 class LLMConfig(AuditBaseModel):
     provider: Literal["openai"] = "openai"
     model_name: str = Field(min_length=1, pattern=r"^\S+$")
     timeout_seconds: float = Field(
-        default=30.0,
+        default=DEFAULT_OPENAI_TIMEOUT_SECONDS,
         gt=0,
         le=180,
     )
@@ -31,7 +33,7 @@ def load_llm_config() -> LLMConfig:
 
     try:
         timeout_seconds = float(
-            os.getenv("OPENAI_TIMEOUT_SECONDS", "30")
+            os.getenv("OPENAI_TIMEOUT_SECONDS", str(DEFAULT_OPENAI_TIMEOUT_SECONDS))
         )
     except ValueError:
         raise ValueError(

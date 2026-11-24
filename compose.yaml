@@ -1,0 +1,54 @@
+services:
+  app:
+    image: healthequity-agent:local
+    build: .
+    init: true
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-60}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "127.0.0.1:${HEALTHEQUITY_PORT:-8501}:8501"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+
+  mlflow:
+    image: healthequity-agent:local
+    pull_policy: never
+    init: true
+    command:
+      - python
+      - -m
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --workers
+      - "1"
+      - --backend-store-uri
+      - sqlite:////var/lib/mlflow/mlflow.db
+      - --artifacts-destination
+      - /var/lib/mlflow/artifacts
+      - --allowed-hosts
+      - "mlflow,mlflow:5000,localhost:*,127.0.0.1:*"
+    ports:
+      - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow-data:/var/lib/mlflow
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3).close()"
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+volumes:
+  mlflow-data:

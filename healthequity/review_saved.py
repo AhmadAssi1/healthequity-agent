@@ -6,7 +6,11 @@ from pathlib import Path
 
 from app.audit_schemas import AuditFindings
 from app.claims_validation import validate_claims
-from app.findings_policy import apply_severity_policy
+from app.findings_policy import (
+    LOCAL_P_VALUE_INSTRUCTION,
+    apply_severity_policy,
+    restore_local_p_values,
+)
 from app.summary_grounding import ground_summary
 from app.tool_contracts import AuditEvidence
 
@@ -27,8 +31,11 @@ def review(directory: Path, *, ground: bool = False, include_summary: bool = Fal
         message = next(m for m in reversed(final["input_messages"]) if marker in (m.get("text") or ""))
         evidence = AuditEvidence.model_validate_json(message["text"].split(marker, 1)[1])
         # Use the actual last model response, even if an unrelated findings file
-        # exists. Reapply the deterministic severity step used by the live agent.
-        candidate = AuditFindings.model_validate(final["response"]["structured_output"])
+        # exists. Reapply the deterministic steps used by this run's protocol.
+        payload = final["response"]["structured_output"]
+        if LOCAL_P_VALUE_INSTRUCTION in message["text"].split(marker, 1)[0]:
+            payload = restore_local_p_values(payload, evidence)
+        candidate = AuditFindings.model_validate(payload)
         candidate, _ = apply_severity_policy(candidate, evidence)
         verdict = validate_claims(candidate, evidence)
         if ground and verdict.passed:

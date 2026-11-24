@@ -1,11 +1,32 @@
 """Apply severity using trusted numerical evidence, preserving correction records."""
 
+from copy import deepcopy
 from math import isclose
 
 from app.agent_schemas import SeverityCorrection
 from app.audit_schemas import AuditFindings
 from app.tool_contracts import AuditEvidence
 from fairness.policy import classify_severity
+
+LOCAL_P_VALUE_INSTRUCTION = "Return null for every p_value field. Exact p-values are inserted locally."
+
+
+def restore_local_p_values(payload, evidence):
+    """Fill null p-value placeholders from their exact attribute and rate evidence."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("attributes"), list):
+        return payload
+    payload = deepcopy(payload)
+    tests = {(item.attribute, item.rate, item.method): item.p_value for item in evidence.significance.results}
+    for attribute in payload["attributes"]:
+        if not isinstance(attribute, dict) or not isinstance(attribute.get("statistical_tests"), list):
+            continue
+        for test in attribute["statistical_tests"]:
+            if not isinstance(test, dict) or test.get("p_value", False) is not None:
+                continue
+            key = (attribute.get("attribute"), test.get("rate"), test.get("method"))
+            if all(isinstance(value, str) for value in key) and key in tests:
+                test["p_value"] = tests[key]
+    return payload
 
 
 def _same_number(proposed: float | None, expected: float | None) -> bool:

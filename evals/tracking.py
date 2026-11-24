@@ -8,6 +8,7 @@ import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from healthequity.cli import _write_json
 
@@ -81,9 +82,14 @@ def log_evaluation(directory, *, tracking_uri=None, client=None):
         from mlflow import MlflowClient
         client = MlflowClient(tracking_uri=tracking_uri)
     experiment = client.get_experiment_by_name(EXPERIMENT)
-    experiment_id = experiment.experiment_id if experiment is not None else client.create_experiment(
-        EXPERIMENT, artifact_location=(Path("mlartifacts") / EXPERIMENT).resolve().as_uri(),
-    )
+    if experiment is not None:
+        experiment_id = experiment.experiment_id
+    elif urlsplit(tracking_uri).scheme in {"http", "https"}:
+        experiment_id = client.create_experiment(EXPERIMENT)
+    else:
+        experiment_id = client.create_experiment(
+            EXPERIMENT, artifact_location=(Path("mlartifacts") / EXPERIMENT).resolve().as_uri(),
+        )
     tags = {
         "evaluation.mode": scorecard["mode"], "evaluation.source_batch": directory.name,
         "evaluation.source_sha256": source_hash,

@@ -6,8 +6,8 @@ with deterministic Python tools and saves validated findings and execution trace
 
 The demonstration use case is 30-day hospital readmission prediction on the UCI
 Diabetes 130-US Hospitals dataset. PDF reporting includes a reusable management
-template for supplied binary tasks. The full web application and drift monitoring
-remain planned deliverables.
+template for supplied binary tasks. The Streamlit application runs locally.
+Public deployment and drift monitoring remain planned deliverables.
 
 ## Current Status
 
@@ -23,8 +23,9 @@ Updated November 19, 2026.
 | Quantitative summary | Rendered from trusted tool evidence and policy; original model draft and grounding verdict retained in the trace |
 | CSV CLI | Custom mappings, automatic artifact saving, failure records, and offline review of saved runs |
 | PDF reporting | Phone-readable management PDF with section bookmarks, labelled subgroup rates, TPR/FPR charts, and a responsive HTML companion |
-| Web interface | Streamlit placeholder |
-| Planned product work | Upload UI, Docker/deployment, audit monitoring and white-label configuration; see evaluation docs for implemented offline/live evaluation tooling |
+| Web interface | Streamlit audit and demo, editable column mapping, and draft PDF download |
+| Containers | App image and local Compose stack with persistent MLflow storage |
+| Planned product work | Public deployment, audit monitoring and white-label configuration; see evaluation docs for implemented offline/live evaluation tooling |
 
 The selected provider is **OpenAI**, using `gpt-4.1-mini` in the recorded live
 runs; the original brief names Gemini. The provider/model configuration remains
@@ -143,7 +144,7 @@ OPENAI_MODEL=gpt-4.1-mini
 OPENAI_TIMEOUT_SECONDS=60
 ```
 
-The timeout shown is per provider request. The agent has a separate total budget
+The default timeout is 60 seconds per provider request. The agent has a separate total budget
 of 180 seconds by default, checked between operations. Existing process environment
 variables take precedence over `.env`. If a stale session key overrides the file:
 
@@ -202,14 +203,61 @@ trusted-fact summary after draft validation. Original live status and offline
 verdict are reported separately. Runs with no final response or invalid incomplete
 findings are unavailable for rechecking.
 
-## Streamlit Prototype
+## Streamlit App
 
 ```powershell
-python -m streamlit run app/app.py
+python -m streamlit run streamlit_app.py
 ```
 
-Open the local URL shown in the terminal. The interface currently displays a
-placeholder; use the CLI for the implemented audit workflow.
+Open the local URL shown in the terminal. In **Audit**, confirm your data are
+synthetic or de-identified, then upload a UTF-8 CSV up to 25 MB. Verify the
+suggested columns, run the audit, and download the draft PDF. **Demo** runs the
+same workflow using the bundled readmission sample. Both paths use the OpenAI
+configuration described above. Select **Run locally without OpenAI** to use the
+statistical tools directly. The web app also uses them when it cannot connect to
+OpenAI and labels the result and PDF as a local statistical audit. Uploaded files
+and web PDF downloads are handled in memory.
+
+For an upload with outcomes and no mapped predictions, select **Demo model features**
+and click **Train demo model and audit**. Choose columns available before the outcome
+and omit identifiers. The session trains LightGBM on a stratified 75% row split, then
+audits predictions for the held-out 25% at a fixed 0.5 threshold. Use one row per
+subject. The results and report identify the demo model and give both split sizes.
+
+### Docker and MLflow
+
+With Docker and Compose running, build and start the local stack:
+
+```powershell
+docker compose up --build -d
+```
+
+Open the [app](http://localhost:8501) and [MLflow](http://localhost:5000).
+The stack reads OpenAI settings from the project `.env` or the current shell.
+See `.env.example` for names and defaults. You can select **Run locally without
+OpenAI** in the app when running without a key. Set `HEALTHEQUITY_PORT` or
+`MLFLOW_PORT` in `.env` if the corresponding host port is in use.
+
+To check experiment and artifact logging with an offline evaluation:
+
+```powershell
+docker compose exec app python -m evals --scenario no_gap --mlflow --output-dir /tmp/evaluations
+```
+
+The run appears under **agent-evals** in MLflow. Automatic tracking of web
+audits is planned. Stop the services with `docker compose down`. A named volume
+retains the MLflow database and artifacts across restarts. The build only includes
+the runtime code and bundled demo sample. Credentials are passed at runtime.
+
+If an older build reports `unable to open database file`, repair the ownership of
+the existing MLflow volume and restart the stack:
+
+```powershell
+docker compose run --rm --no-deps --user 0 --entrypoint chown mlflow app:app /var/lib/mlflow
+docker compose up --build -d
+```
+
+For the hosted beta, see the [deployment guide](docs/deployment.md).
 
 ## Explore the Data
 
@@ -323,7 +371,7 @@ python -m pre_commit run --all-files
 ## Project Structure
 
 - `app/`: Agent/provider adapters, typed contracts, profiling, plan/policy guards,
-  claims validation, summary grounding, data helpers, and the Streamlit placeholder.
+  claims validation, summary grounding, data helpers, and the Streamlit interface.
 - `healthequity/`: CSV audit CLI, artifact persistence, and offline saved-run review.
 - `fairness/`: Deterministic metrics, statistics, policies, and scenario generation.
 - `evals/`: Twelve known-answer scenarios, offline/live runner, and failure-sensitive scorecards.

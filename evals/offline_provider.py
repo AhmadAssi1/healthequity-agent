@@ -1,16 +1,7 @@
 """Scripted protocol smoke provider, explicitly not a model evaluation."""
 
-from app.audit_schemas import (
-    AttributeFindings,
-    AuditFindings,
-    BootstrapConfidenceInterval,
-    DatasetSummary,
-    FairnessFinding,
-    StatisticalTestResult,
-    SuppressedGroup,
-)
 from app.llm_schemas import LLMResponse, TokenUsage, ToolCall
-from fairness.policy import classify_severity
+from app.local_audit import findings_from_evidence
 
 STAGES = [
     "profile_dataset", "check_group_sizes", "select_analyses",
@@ -20,39 +11,9 @@ STAGES = [
 
 def draft_from_tools(session):
     """Copy trusted outputs to exercise the pipeline, never the fixture oracle."""
-    evidence = session.get_evidence()
-    intervals = {(b.attribute, b.metric): b for b in evidence.bootstrap.results}
-    attributes = []
-    for item in evidence.metrics.results:
-        gaps = []
-        for gap in item.gaps:
-            boot = intervals[item.attribute, gap.metric]
-            interval = None if boot.lower is None else BootstrapConfidenceInterval(
-                lower=boot.lower, upper=boot.upper,
-                valid_resamples=boot.valid_resamples, total_resamples=boot.total_resamples,
-            )
-            gaps.append(FairnessFinding(
-                **gap.model_dump(), confidence_interval=interval,
-                confidence_interval_reason=boot.reason,
-                severity=classify_severity(gap.value, boot.lower, boot.upper, evidence.severity_policy),
-            ))
-        attributes.append(AttributeFindings(
-            attribute=item.attribute, groups=item.groups, fairness_findings=gaps,
-            suppressed_groups=[SuppressedGroup(
-                group_value=s.group_value,
-                suppression_reason="Insufficient evidence: " + ", ".join(s.reason_codes),
-            ) for s in item.suppressed_groups],
-            statistical_tests=[StatisticalTestResult(**t.model_dump(exclude={"attribute"}))
-                               for t in evidence.significance.results if t.attribute == item.attribute],
-        ))
-    return AuditFindings(
-        dataset=DatasetSummary(
-            row_count=evidence.profile.row_count, column_count=evidence.profile.column_count,
-            group_columns=[a.attribute for a in attributes],
-            score_available=evidence.profile.score_available,
-        ), attributes=attributes,
+    return findings_from_evidence(
+        session.get_evidence(),
         summary="Observed associations require review.",
-        warnings=evidence.profile.data_quality_flags,
         limitations=["Rows are treated as independent observations."],
     ).model_dump(mode="json")
 

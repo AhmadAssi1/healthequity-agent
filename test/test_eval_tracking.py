@@ -81,6 +81,15 @@ def test_failed_evaluation_stays_failed_in_mlflow(tmp_path):
     assert all(c.kwargs["status"] == "FAILED" for c in client.set_terminated.call_args_list)
 
 
+def test_http_export_uses_the_tracking_servers_artifact_store(tmp_path):
+    client = mock_client()
+    client.get_experiment_by_name.return_value = None
+    client.create_experiment.return_value = "456"
+    log_evaluation(bundle(tmp_path), tracking_uri="http://mlflow:5000", client=client)
+    client.create_experiment.assert_called_once_with("agent-evals")
+    assert client.create_run.call_args_list[0].args[0] == "456"
+
+
 def test_export_storage_failure_is_surfaced_and_no_success_receipt_written(tmp_path):
     directory = bundle(tmp_path)
     client = mock_client()

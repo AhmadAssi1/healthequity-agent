@@ -18,7 +18,7 @@ def isolated_env(monkeypatch):
 def test_defaults_and_provider_are_openai_only():
     config = LLMConfig(model_name="gpt-4.1-mini")
     assert config.provider == "openai"
-    assert config.timeout_seconds == 30.0
+    assert config.timeout_seconds == 60.0
 
 
 @pytest.mark.parametrize("changes", [
@@ -46,7 +46,7 @@ def test_environment_values_are_loaded_and_override_disabled(isolated_env):
 def test_missing_timeout_uses_default(isolated_env):
     monkeypatch, _ = isolated_env
     monkeypatch.setenv("OPENAI_MODEL", "test-model")
-    assert load_llm_config().timeout_seconds == 30.0
+    assert load_llm_config().timeout_seconds == 60.0
 
 
 def test_missing_model_fails_clearly(isolated_env):
