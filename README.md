@@ -6,12 +6,13 @@ with deterministic Python tools and saves validated findings and execution trace
 
 The demonstration use case is 30-day hospital readmission prediction on the UCI
 Diabetes 130-US Hospitals dataset. PDF reporting includes a reusable management
-template for supplied binary tasks. The Streamlit application runs locally.
-Public deployment and drift monitoring remain planned deliverables.
+template for supplied binary tasks. Try the [public beta on Render](https://healthequity-agent.onrender.com/demo)
+to run the bundled audit and download its A4 PDF. The public app uses the
+statistical engine and accepts only synthetic or de-identified CSVs.
 
 ## Current Status
 
-Updated November 19, 2026.
+Updated November 26, 2026.
 
 | Component | Status |
 |---|---|
@@ -25,7 +26,8 @@ Updated November 19, 2026.
 | PDF reporting | Phone-readable management PDF with section bookmarks, labelled subgroup rates, TPR/FPR charts, and a responsive HTML companion |
 | Web interface | Streamlit audit and demo, editable column mapping, and draft PDF download |
 | Containers | App image and local Compose stack with persistent MLflow storage |
-| Planned product work | Public deployment, audit monitoring and white-label configuration; see evaluation docs for implemented offline/live evaluation tooling |
+| Public deployment | Render beta with automatic deploys configured after successful GitHub checks; see the [deployment guide](docs/deployment.md) |
+| Planned product work | Audit monitoring and white-label configuration |
 
 The selected provider is **OpenAI**, using `gpt-4.1-mini` in the recorded live
 runs; the original brief names Gemini. The provider/model configuration remains
@@ -40,7 +42,8 @@ Python. Standalone drafting and PDF rendering retain injectable backend interfac
 
 | Evidence | Confirmed result |
 |---|---|
-| Current local test checks | **1,207 passed**; one MLflow/SQLAlchemy integration test blocked by Windows application control (excluded from the passing rerun) |
+| Public demo acceptance | An external tester completed the audit and downloaded the A4 PDF on a phone in under one minute without assistance |
+| November 19 local test checks | **1,207 passed**; one MLflow/SQLAlchemy integration test blocked by Windows application control (excluded from the passing rerun) |
 | Linting | Ruff passed |
 | Consecutive live demo batch | **5/5 completed**, each auditing 14,998 rows across race, gender, age and payer_code |
 | Batch total latency | **44.354-66.574 seconds**, mean **51.363 seconds** |
@@ -359,7 +362,8 @@ no live OpenAI calls. Live CLI benchmarks are separate paid runs.
 The test count does not provide a new coverage measurement. Coverage excludes
 the two live-API demonstration scripts and does not measure notebook training.
 GitHub Actions and pre-commit run Ruff and tests with coverage for `app`,
-`fairness`, and `healthequity`. Confirm CI for this revision after pushing.
+`fairness`, and `healthequity`. See [GitHub Actions](https://github.com/AhmadAssi1/healthequity-agent/actions)
+for the latest checks.
 
 With the project environment active, enable and run local commit checks:
 
@@ -367,6 +371,10 @@ With the project environment active, enable and run local commit checks:
 python -m pre_commit install
 python -m pre_commit run --all-files
 ```
+
+Gitleaks scans staged changes for hardcoded credentials before each commit and
+redacts detected values in its output. Run `python -m pre_commit run gitleaks`
+to check only the changes currently staged.
 
 ## Project Structure
 

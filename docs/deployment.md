@@ -20,5 +20,15 @@ local Compose stack also supports OpenAI-assisted audits and MLflow tracking.
 The Free instance has 512 MB of memory and can go to sleep when idle. The first
 visit after a period of inactivity may need to wait for the service to start.
 
+## Week 5 external test
+
+On November 26, 2026, Ahmad confirmed that a tester outside the project opened
+the [public demo](https://healthequity-agent.onrender.com/demo) on a phone, ran the
+audit, and downloaded the A4 PDF without assistance. The full test took less
+than one minute and met the five-minute benchmark.
+
+On November 25, 2026, Ahmad tested the public **Audit** page with a sample CSV
+and confirmed that the audit report downloaded successfully.
+
 [Render Blueprints](https://render.com/docs/blueprint-spec) ·
 [Free instance limits](https://render.com/docs/free)
