@@ -11,6 +11,17 @@ from app.summary_grounding import LIMITATIONS_PLACEHOLDER, SUMMARY_PLACEHOLDER
 from evals.probe import probe_schema, safe_bad_request_message
 
 
+@pytest.fixture
+def bad_request_response():
+    return SimpleNamespace(
+        status_code=400,
+        headers={},
+        request=SimpleNamespace(method="POST", url="https://example.invalid", headers={}),
+        history=[],
+        next_request=None,
+    )
+
+
 @pytest.mark.parametrize("status", ["completed", "incomplete"])
 def test_probe_uses_exact_runtime_schema_in_one_capped_request(status):
     create = Mock(return_value=SimpleNamespace(status=status, error=None))
@@ -33,9 +44,8 @@ def test_probe_uses_exact_runtime_schema_in_one_capped_request(status):
     assert "row_count" not in request["input"]
 
 
-def test_probe_rejection_makes_no_retry():
-    response = SimpleNamespace(status_code=400, headers={}, request=SimpleNamespace(method="POST", url="https://example.invalid"))
-    error = BadRequestError("Rejected", response=response, body={"message": "Invalid schema"})
+def test_probe_rejection_makes_no_retry(bad_request_response):
+    error = BadRequestError("Rejected", response=bad_request_response, body={"message": "Invalid schema"})
     create = Mock(side_effect=error)
     client = SimpleNamespace(responses=SimpleNamespace(create=create))
     with pytest.raises(BadRequestError):
@@ -43,10 +53,9 @@ def test_probe_rejection_makes_no_retry():
     assert create.call_count == 1
 
 
-def test_bad_request_diagnostics_do_not_print_credentials(monkeypatch):
+def test_bad_request_diagnostics_do_not_print_credentials(monkeypatch, bad_request_response):
     monkeypatch.setenv("OPENAI_API_KEY", "private-key-value")
-    response = SimpleNamespace(status_code=400, headers={}, request=SimpleNamespace(method="POST", url="https://example.invalid"))
-    error = BadRequestError("Rejected", response=response, body={
+    error = BadRequestError("Rejected", response=bad_request_response, body={
         "message": "Invalid schema: private-key-value sk-proj-secret-token pattern not allowed",
     })
     message = safe_bad_request_message(error)

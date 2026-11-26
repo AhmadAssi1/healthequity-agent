@@ -145,7 +145,7 @@ def test_connection_failure_still_produces_labeled_results_and_pdf(monkeypatch, 
         model_name = "test-model"
 
         def generate(self, **kwargs):
-            raise APIConnectionError(request=Mock())
+            raise APIConnectionError(request=Mock(headers={}))
 
     def create_provider(config):
         if setup_fails:
